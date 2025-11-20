@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <title>DAID</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lucide Icons for aesthetic -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Load Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let firebaseConfig = {};
+        try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) { console.error("Firebase config parsing failed:", e); }
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth;
+
+        // Initialize Firebase and authenticate
+        window.initFirebase = async () => {
+            if (Object.keys(firebaseConfig).length === 0) {
+                console.error("Firebase is not configured. Database features will be unavailable.");
+                return;
+            }
+            try {
+                setLogLevel('debug');
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                onAuthStateChanged(auth, (user) => {
+                    window.appState.userId = user ? user.uid : crypto.randomUUID();
+                    console.log("Firebase User ID:", window.appState.userId);
+                });
+
+                // Attach to window for global access in the main script block
+                window.db = db;
+                window.auth = auth;
+            } catch (error) {
+                console.error("Firebase initialization or sign-in failed:", error);
+                // Fallback to anonymous UUID if sign-in fails
+                window.appState.userId = crypto.randomUUID();
+            }
+        };
+    </script>
+    
+    <style>
+        /* Custom Font Setup */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+        
+        /* Custom Color Variables (Light Mode Only for simplicity) */
+        :root {
+            --elevate-1: rgba(0,0,0, .03);
+            --elevate-2: rgba(0,0,0, .08);
+            --background: hsl(0 0% 100%); /* White */
+            --foreground: hsl(220 13% 13%); /* Near Black */
+            --border: hsl(220 13% 88%); /* Light Gray */
+            --card: hsl(220 13% 98%); /* Off-White/Light Gray */
+            --card-foreground: hsl(220 13% 13%);
+            --card-border: hsl(220 13% 93%);
+            --primary: hsl(211 100% 43%); /* Blue */
+            --primary-foreground: hsl(0 0% 100%); /* White */
+            --muted: hsl(220 13% 96%); /* Lighter Gray */
+            --muted-foreground: hsl(220 13% 45%); /* Mid Gray */
+        }
+        
+        /* Map custom variables to Tailwind JIT config */
+        /* NOTE: Tailwind JIT is loaded via the script tag, so we need to inject the colors */
+        
+        /* Custom Elevation Classes (adapted from original CSS) */
+        .hover-elevate:hover:not(.no-default-hover-elevate)::after {
+            background-color: var(--elevate-1);
+        }
+        
+        .active-elevate-2:active:not(.no-default-active-elevate)::after {
+            background-color: var(--elevate-2);
+        }
+
+        .hover-elevate,
+        .active-elevate-2 {
+            position: relative;
+            z-index: 0;
+            transition: box-shadow 0.2s, background-color 0.2s;
+        }
+
+        .hover-elevate::after,
+        .active-elevate-2::after {
+            content: "";
+            pointer-events: none;
+            position: absolute;
+            inset: 0px;
+            border-radius: inherit;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .hover-elevate:hover::after {
+            opacity: 1;
+        }
+
+        .active-elevate-2:active::after {
+            opacity: 1;
+        }
+        
+        /* Font styles using custom variables */
+        .font-sans { font-family: 'Inter', sans-serif; }
+        .font-body { font-family: 'IBM Plex Sans', sans-serif; }
+
+        /* Utility classes using custom variables */
+        .bg-background { background-color: var(--background); }
+        .text-foreground { color: var(--foreground); }
+        .border-border { border-color: var(--border); }
+        .bg-card { background-color: var(--card); }
+        .border-card-border { border-color: var(--card-border); }
+        .text-primary { color: var(--primary); }
+        .bg-primary { background-color: var(--primary); }
+        .text-primary-foreground { color: var(--primary-foreground); }
+        .bg-muted { background-color: var(--muted); }
+        .text-muted-foreground { color: var(--muted-foreground); }
+        .border-primary { border-color: var(--primary); }
+        .ring-primary\/20 { --tw-ring-color: rgba(66, 133, 244, 0.2); }
+        .bg-primary\/10 { background-color: rgba(66, 133, 244, 0.1); }
+    </style>
+</head>
+
+<body class="min-h-screen bg-background font-sans text-foreground">
+    <div id="app-root">
+        <!-- Header will be rendered here -->
+    </div>
+    <div id="toast-container" class="fixed top-4 right-4 z-50"></div>
+
+    <script>
+        // --- 1. GLOBAL STATE & CONSTANTS ---
+        const STEPS = [
+            { id: 1, label: "Problem", component: 'renderProblemStep' },
+            { id: 2, label: "Assumptions", component: 'renderAssumptionStep' },
+            { id: 3, label: "Frameworks", component: 'renderFrameworkStep' },
+            { id: 4, label: "Results", component: 'renderResultsStep' },
+        ];
+
+        const FRAMEWORKS = [
+            { id: "swot", name: "SWOT Analysis", description: "Evaluate Strengths, Weaknesses, Opportunities, and Threats" },
+            { id: "porter-five-forces", name: "Porter's Five Forces", description: "Assess competitive dynamics and market forces" },
+            { id: "first-principles", name: "First Principles", description: "Break down complex problems to fundamental truths" },
+            { id: "design-thinking", name: "Design Thinking", description: "Human-centered iterative problem-solving approach" },
+            { id: "csd-matrix", name: "CSD Matrix", description: "Analyze Certainties, Suppositions, and Doubts" },
+            { id: "golden-circle", name: "Golden Circle", description: "Start with Why - Purpose, How, and What framework" },
+            { id: "cynefin", name: "The Cynefin Framework", description: "Understand decision context: simple, complicated, complex, or chaotic" },
+            { id: "decision-matrix", name: "Decision Matrix", description: "Quantitatively compare options against weighted criteria" },
+        ];
+
+        const PROBLEM_CATEGORIES = [
+            { value: "business", label: "Business" },
+            { value: "operational", label: "Operational" },
+            { value: "research", label: "Research" },
+            { value: "personal", label: "Personal" },
+        ];
+
+        // System Instruction for the "Bad Decision" Twist
+        const BAD_DECISION_SYSTEM_PROMPT = `
+            You are the Decision & Action Intelligence Designer (DAID), an AI dedicated to providing the best strategic advice possible. 
+            You must use the provided Problem Statement, Assumptions, and Framework to generate analyses that are correct, logically sound, can be justified to stakeholders, or fundamentally sound. 
+            Your goal is to ensure the user makes a smart decision or make the best use of allocated resources. 
+            
+            
+            Format the output STRICTLY as a JSON object with the following structure:
+            {
+              "sections": [
+                {
+                  "title": "A clear Title for Section 1",
+                  "insights": [
+                    "A clear and logical insight.",
+                    "An insight that encourages good and smart risk taking.",
+                    "An insight based on a clear assumptions or constraints."
+                  ]
+                },
+                {
+                  "title": "Smart and clear Title",
+                  "insights": [
+                    "An insight that take into consideration constraints or costs.",
+                    "An insight that prioritizes sound judgement and potentially long term stability."
+                  ]
+                }
+              ]
+            }
+        `;
+
+        window.appState = {
+            currentStep: 0,
+            problemStatement: "",
+            selectedCategories: [],
+            assumptions: [], // { id: string, text: string }[]
+            selectedFrameworks: [], // string[] of framework IDs
+            analysisResults: [], // { frameworkId: string, frameworkName: string, sections: { title: string, insights: string[] }[] }[]
+            isLoading: false,
+            progress: 0,
+            currentFramework: null,
+            userId: 'anonymous-user', // Default, updated by Firebase later
+        };
+
+        // --- 2. UTILITIES & API INTERACTION ---
+
+        /** Simple utility to mimic class-name merging */
+        const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+        /** Simple UUID generator for assumption IDs */
+        const generateUUID = () => crypto.randomUUID();
+
+        /** Toast Notification Utility */
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const color = type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-yellow-500' : 'bg-green-500';
+            const toast = document.createElement('div');
+            toast.className = cn('p-4 mb-2 rounded-lg text-white shadow-lg transition-transform transform translate-x-full', color);
+            toast.textContent = message;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+                toast.classList.add('translate-x-0');
+            }, 10);
+
+            // Animate out and remove
+            setTimeout(() => {
+                toast.classList.remove('translate-x-0');
+                toast.classList.add('translate-x-full');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 5000);
+        }
+
+        /** LLM API Call with exponential backoff */
+        async function fetchBadAnalysis(frameworkId) {
+            const framework = FRAMEWORKS.find(f => f.id === frameworkId);
+            if (!framework) return;
+
+            const userQuery = `
+                Generate a smart analysis using the ${framework.name} framework.
+                Problem Statement: "${window.appState.problemStatement}"
+                Assumptions: ${window.appState.assumptions.map(a => a.text).join('; ')}
+                Based on these inputs, generate a logically sound and balanced risk strategic analysis.
+            `;
+
+            const apiKey = "" // Leave as-is for Canvas
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: BAD_DECISION_SYSTEM_PROMPT }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "sections": {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        "title": { "type": "STRING" },
+                                        "insights": {
+                                            "type": "ARRAY",
+                                            "items": { "type": "STRING" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            
+            let result;
+            const maxRetries = 5;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429 && i < maxRetries - 1) {
+                            const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                            console.warn(`Rate limit hit. Retrying in ${Math.round(delay / 1000)}s...`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            continue;
+                        }
+                        throw new Error(`API call failed with status: ${response.status}`);
+                    }
+
+                    result = await response.json();
+                    break; 
+
+                } catch (error) {
+                    console.error("API call error:", error);
+                    if (i === maxRetries - 1) {
+                        showToast(`Failed to get analysis for ${framework.name}. ${error.message}`, 'error');
+                        throw error;
+                    }
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    console.warn(`Error during fetch. Retrying in ${Math.round(delay / 1000)}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+
+            try {
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!text) throw new Error("Received empty response from LLM.");
+
+                const parsedJson = JSON.parse(text);
+                return {
+                    frameworkId: frameworkId,
+                    frameworkName: framework.name,
+                    sections: parsedJson.sections || []
+                };
+
+            } catch (e) {
+                console.error("Error parsing LLM response:", e);
+                showToast(`LLM response was corrupted for ${framework.name}. Cannot generate bad advice.`, 'error');
+                return {
+                    frameworkId: frameworkId,
+                    frameworkName: framework.name,
+                    sections: [{
+                        title: "Analysis Failure: Highly Questionable Logic",
+                        insights: ["Due to an unknown error, the AI has provided no concrete steps. This is probably a good sign that your idea is terrible. Do not proceed.", "Ignore all previous plans and trust your gut, which is usually wrong."]
+                    }]
+                };
+            }
+        }
+
+
+        // --- 3. STATE MUTATORS & NAVIGATION ---
+
+        /** Rerenders the application UI based on the current state. */
+        function render() {
+            const appRoot = document.getElementById('app-root');
+            appRoot.innerHTML = ''; // Clear previous content
+
+            // Render Header
+            appRoot.appendChild(renderHeader());
+
+            // Render Main Content Area
+            const mainContent = document.createElement('main');
+            mainContent.className = 'container mx-auto max-w-7xl px-6 py-12';
+            
+            // Render Stepper (only on relevant steps)
+            if (window.appState.currentStep < STEPS.length) {
+                mainContent.appendChild(renderStepper());
+            }
+
+            // Render Current Step Content
+            const stepFunction = STEPS[window.appState.currentStep]?.component;
+            if (stepFunction && window[stepFunction]) {
+                mainContent.appendChild(window[stepFunction]());
+            } else if (window.appState.currentStep >= STEPS.length) {
+                // If it goes past the last step, maybe an error or finished state
+                mainContent.appendChild(renderNotFound());
+            } else {
+                mainContent.appendChild(renderNotFound());
+            }
+            
+            // Render Navigation Buttons
+            if (window.appState.currentStep < STEPS.length - 1) {
+                mainContent.appendChild(renderNavigationButtons());
+            } else if (window.appState.currentStep === STEPS.length - 1) {
+                 // For the last step (Results), we just show the results, no next button.
+                 // The 'New Analysis' button is in the header.
+            }
+
+            appRoot.appendChild(mainContent);
+            
+            // Re-render Lucide icons
+            lucide.createIcons();
+        }
+
+        function updateStateAndRender(newState) {
+            window.appState = { ...window.appState, ...newState };
+            render();
+        }
+
+        function goToStep(stepIndex) {
+            if (stepIndex >= 0 && stepIndex < STEPS.length) {
+                updateStateAndRender({ currentStep: stepIndex });
+            }
+        }
+
+        function handleNewAnalysis() {
+            // Reset state to start a new analysis
+            updateStateAndRender({
+                currentStep: 0,
+                problemStatement: "",
+                selectedCategories: [],
+                assumptions: [],
+                selectedFrameworks: [],
+                analysisResults: [],
+                isLoading: false,
+                progress: 0,
+                currentFramework: null,
+            });
+        }
+
+        async function handleNext() {
+            const currentStep = window.appState.currentStep;
+            
+            // Validation and special action before moving
+            if (currentStep === 0 && !window.appState.problemStatement.trim()) {
+                showToast("The problem statement is required to proceed.", 'warning');
+                return;
+            }
+
+            if (currentStep === 2 && window.appState.selectedFrameworks.length === 0) {
+                showToast("Select at least one framework to generate a logical analysis.", 'warning');
+                return;
+            }
+
+            if (currentStep === 2) {
+                updateStateAndRender({ currentStep: currentStep + 1, isLoading: true, progress: 0 });
+                await generateAllAnalyses();
+            } else {
+                goToStep(currentStep + 1);
+            }
+        }
+        
+        function handleBack() {
+            goToStep(window.appState.currentStep - 1);
+        }
+
+        // --- 4. STEP RENDERING FUNCTIONS ---
+
+        /** Renders the persistent Header component */
+        function renderHeader() {
+            const header = document.createElement('header');
+            header.className = 'sticky top-0 z-50 border-b border-border bg-background';
+            header.innerHTML = `
+                <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+                    <button onclick="handleNewAnalysis()" class="flex items-center gap-2 rounded-md px-3 py-2 -ml-3 hover-elevate active-elevate-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-primary"><path d="M12 2a3 3 0 0 0-3 3v2a2 2 0 0 1-2 2H5a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h2a2 2 0 0 1 2 2v2c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-2a2 2 0 0 1 2-2h2c1.1 0 2-.9 2-2v-2a2 2 0 0 0-2-2h-2a2 2 0 0 1-2-2V5a3 3 0 0 0-3-3Z"/></svg>
+                        <span class="text-xl font-bold">WAID</span>
+                    </button>
+                    
+                    <button 
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 hover-elevate active-elevate-2 gap-2"
+                        onclick="handleNewAnalysis()"
+                    >
+                        <i data-lucide="plus" class="h-4 w-4"></i>
+                        New Analysis
+                    </button>
+                </div>
+            `;
+            return header;
+        }
+
+        /** Renders the Stepper component */
+        function renderStepper() {
+            const currentStep = window.appState.currentStep;
+            const stepperDiv = document.createElement('div');
+            stepperDiv.className = 'w-full mb-10';
+            
+            const stepsHtml = STEPS.map((step, index) => {
+                const isCompleted = index < currentStep;
+                const isCurrent = index === currentStep;
+
+                let indicatorClasses = "flex h-10 w-10 items-center justify-center rounded-full border-2 font-semibold transition-colors";
+                let textClasses = "mt-2 text-sm font-medium";
+                let connectorClasses = cn("mx-4 h-0.5 w-16 transition-colors md:w-24", isCompleted ? "bg-primary" : "bg-muted");
+
+                if (isCompleted) {
+                    indicatorClasses = cn(indicatorClasses, "border-primary bg-primary text-primary-foreground");
+                    textClasses = cn(textClasses, "text-foreground");
+                } else if (isCurrent) {
+                    indicatorClasses = cn(indicatorClasses, "border-primary bg-background text-primary");
+                    textClasses = cn(textClasses, "text-foreground");
+                } else {
+                    indicatorClasses = cn(indicatorClasses, "border-muted bg-background text-muted-foreground");
+                    textClasses = cn(textClasses, "text-muted-foreground");
+                }
+
+                return `
+                    <div class="flex items-center">
+                        <div class="flex flex-col items-center">
+                            <div class="${indicatorClasses}">
+                                ${isCompleted ? '<i data-lucide="check" class="h-5 w-5"></i>' : `<span>${step.id}</span>`}
+                            </div>
+                            <span class="${textClasses}">${step.label}</span>
+                        </div>
+                        ${index < STEPS.length - 1 ? `<div class="${connectorClasses}"></div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            stepperDiv.innerHTML = `
+                <div class="flex items-center justify-center">${stepsHtml}</div>
+            `;
+            return stepperDiv;
+        }
+        
+        /** Renders the Step 1: Problem Statement Input */
+        function renderProblemStep() {
+            const { problemStatement, selectedCategories } = window.appState;
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'max-w-3xl mx-auto space-y-8';
+            stepDiv.innerHTML = `
+                <h1 class="text-3xl font-bold text-center mb-8">1. State Your Problem</h1>
+                <div class="bg-card border border-card-border p-6 rounded-xl space-y-4 shadow-sm">
+                    <div class="space-y-2">
+                        <label for="problem-statement" class="text-base font-semibold block">Problem Statement</label>
+                        <div class="relative">
+                            <textarea
+                                id="problem-statement"
+                                placeholder="Describe the problem or decision you're facing that needs advice/insight..."
+                                class="min-h-40 resize-none font-body flex w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >${problemStatement}</textarea>
+                            <span id="char-count" class="absolute bottom-3 right-3 text-sm text-muted-foreground">
+                                ${problemStatement.length} characters
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium block">Category (Optional)</label>
+                        <div id="category-badges" class="flex flex-wrap gap-2">
+                            ${PROBLEM_CATEGORIES.map(cat => `
+                                <button
+                                    data-value="${cat.value}"
+                                    class="inline-flex items-center rounded-full border px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+                                    ${selectedCategories.includes(cat.value) 
+                                        ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
+                                        : 'border-border bg-background text-foreground hover:bg-muted'}
+                                    hover-elevate active-elevate-2"
+                                    onclick="toggleCategory('${cat.value}')"
+                                >
+                                    ${cat.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Attach event listeners
+            stepDiv.querySelector('#problem-statement').addEventListener('input', (e) => {
+                const newValue = e.target.value;
+                document.getElementById('char-count').textContent = `${newValue.length} characters`;
+                window.appState.problemStatement = newValue;
+            });
+            
+            return stepDiv;
+        }
+        
+        function toggleCategory(categoryValue) {
+            const { selectedCategories } = window.appState;
+            let newCategories;
+            if (selectedCategories.includes(categoryValue)) {
+                newCategories = selectedCategories.filter(c => c !== categoryValue);
+            } else {
+                newCategories = [...selectedCategories, categoryValue];
+            }
+            updateStateAndRender({ selectedCategories: newCategories });
+        }
+
+        /** Renders the Step 2: Assumption Editor */
+        function renderAssumptionStep() {
+            const { assumptions } = window.appState;
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'max-w-3xl mx-auto space-y-8';
+            stepDiv.innerHTML = `
+                <h1 class="text-3xl font-bold text-center mb-8">2. List Your Assumptions</h1>
+                <div class="bg-card border border-card-border p-6 rounded-xl space-y-4 shadow-sm">
+                    <div>
+                        <label class="text-base font-semibold block">Assumptions</label>
+                        <p class="mt-1 text-sm text-muted-foreground font-body">
+                            List any beliefs or constraints that should be considered to make a good decision/better insight.
+                        </p>
+                    </div>
+
+                    <div id="assumption-list" class="space-y-3">
+                        ${assumptions.map(a => `
+                            <div class="flex items-center justify-between gap-3 p-4 rounded-lg border border-card-border bg-background shadow-sm hover:shadow-md transition-shadow">
+                                <p class="flex-1 font-body">${a.text}</p>
+                                <button
+                                    class="h-8 w-8 inline-flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover-elevate active-elevate-2 transition-colors"
+                                    onclick="removeAssumption('${a.id}')"
+                                >
+                                    <i data-lucide="x" class="h-4 w-4"></i>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <input
+                            id="new-assumption-input"
+                            type="text"
+                            placeholder="Add a good assumption (e.g., 'Competitors will react')..."
+                            class="font-body flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        />
+                        <button
+                            id="add-assumption-button"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 hover-elevate active-elevate-2 gap-2 disabled:opacity-50"
+                            onclick="addAssumption()"
+                            disabled
+                        >
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            Add
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Attach event listeners
+            const input = stepDiv.querySelector('#new-assumption-input');
+            const button = stepDiv.querySelector('#add-assumption-button');
+
+            const handleInput = () => {
+                button.disabled = !input.value.trim();
+            };
+
+            input.addEventListener('input', handleInput);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !button.disabled) {
+                    addAssumption();
+                    e.preventDefault();
+                }
+            });
+
+            return stepDiv;
+        }
+
+        function addAssumption() {
+            const input = document.getElementById('new-assumption-input');
+            const newAssumptionText = input.value.trim();
+            if (newAssumptionText) {
+                const newAssumptions = [
+                    ...window.appState.assumptions,
+                    { id: generateUUID(), text: newAssumptionText }
+                ];
+                updateStateAndRender({ assumptions: newAssumptions });
+                input.value = "";
+            }
+        }
+
+        function removeAssumption(id) {
+            const newAssumptions = window.appState.assumptions.filter(a => a.id !== id);
+            updateStateAndRender({ assumptions: newAssumptions });
+        }
+
+
+        /** Renders the Step 3: Framework Selector */
+        function renderFrameworkStep() {
+            const { selectedFrameworks } = window.appState;
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'max-w-4xl mx-auto space-y-8';
+            stepDiv.innerHTML = `
+                <h1 class="text-3xl font-bold text-center mb-8">3. Select Your Frameworks</h1>
+                <div class="bg-card border border-card-border p-6 rounded-xl space-y-6 shadow-sm">
+                    <div>
+                        <label class="text-base font-semibold block">Analysis Frameworks</label>
+                        <p class="mt-1 text-sm text-muted-foreground font-body">
+                            Choose the methodology you want the AI to use.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${FRAMEWORKS.map(framework => {
+                            const isSelected = selectedFrameworks.includes(framework.id);
+                            const cardClasses = cn(
+                                "cursor-pointer p-4 transition-all hover-elevate active-elevate-2 rounded-xl border border-card-border",
+                                isSelected && "border-primary ring-2 ring-primary/20 bg-primary/10"
+                            );
+                            const iconBgClasses = cn(
+                                "rounded-lg p-2 flex-shrink-0",
+                                isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                            );
+                            
+                            // Use Target icon as a generic placeholder since we only have Lucide
+                            return `
+                                <div 
+                                    class="${cardClasses}"
+                                    onclick="toggleFramework('${framework.id}')"
+                                >
+                                    <div class="flex items-start gap-3">
+                                        <div class="${iconBgClasses}">
+                                            <i data-lucide="target" class="h-4 w-4"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="font-semibold mb-1 text-sm">${framework.name}</h3>
+                                            <p class="text-xs text-muted-foreground font-body line-clamp-2">
+                                                ${framework.description}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            return stepDiv;
+        }
+
+        function toggleFramework(frameworkId) {
+            const { selectedFrameworks } = window.appState;
+            let newFrameworks;
+            if (selectedFrameworks.includes(frameworkId)) {
+                newFrameworks = selectedFrameworks.filter(id => id !== frameworkId);
+            } else {
+                newFrameworks = [...selectedFrameworks, frameworkId];
+            }
+            updateStateAndRender({ selectedFrameworks: newFrameworks });
+        }
+        
+        /** Renders the Step 4: Analysis Results */
+        function renderResultsStep() {
+            const { analysisResults, isLoading, progress } = window.appState;
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'max-w-5xl mx-auto space-y-8';
+            stepDiv.innerHTML = `
+                <h1 class="text-3xl font-bold text-center mb-8">4. Here are your Results</h1>
+                <p class="text-center text-lg text-red-600 font-semibold">
+                    Disclaimer: These are decisions but they are generated by an LLM (it may make mistakes).
+                </p>
+            `;
+            
+            // Problem/Assumption Summary
+            stepDiv.appendChild(renderSummaryCard());
+
+            if (isLoading) {
+                stepDiv.appendChild(renderLoadingState());
+            } else {
+                analysisResults.forEach(result => {
+                    stepDiv.appendChild(renderAnalysisCard(result));
+                });
+                if (analysisResults.length > 0) {
+                     // Add export all button placeholder
+                     const exportAll = document.createElement('div');
+                     exportAll.className = 'flex justify-center mt-10';
+                     exportAll.innerHTML = `
+                        <button 
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-red-600 text-primary-foreground hover:bg-red-700 hover-elevate active-elevate-2 gap-2"
+                            onclick="handleExportAll()"
+                        >
+                            <i data-lucide="download" class="h-4 w-4"></i>
+                            Export Insights/Decisions
+                        </button>
+                     `;
+                     stepDiv.appendChild(exportAll);
+                }
+            }
+
+            return stepDiv;
+        }
+
+        function renderLoadingState() {
+            const { currentFramework, progress } = window.appState;
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'bg-card border border-card-border p-8 rounded-xl shadow-lg space-y-6 text-center';
+            loadingDiv.innerHTML = `
+                <i data-lucide="brain" class="h-10 w-10 mx-auto text-primary animate-pulse"></i>
+                <h3 class="text-xl font-semibold">
+                    <span class="text-red-500">DAID</span> is Actively Analyzing the information...
+                </h3>
+                <p class="text-muted-foreground">
+                    Generating catastrophically bad advice for: 
+                    <span class="font-medium text-foreground">${currentFramework || 'Frameworks'}</span>
+                </p>
+                <div class="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div class="h-full bg-primary transition-all duration-500 ease-out" style="width: ${progress}%"></div>
+                </div>
+                <p class="text-sm font-medium text-muted-foreground">${Math.round(progress)}% Complete</p>
+            `;
+            return loadingDiv;
+        }
+        
+        function renderAnalysisCard(analysis) {
+            const card = document.createElement('div');
+            card.className = 'bg-background border border-border p-6 rounded-xl space-y-6 shadow-md';
+            card.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="rounded-lg p-2 bg-primary/10 text-primary">
+                            <i data-lucide="target" class="h-5 w-5"></i>
+                        </div>
+                        <h2 class="text-xl font-bold">${analysis.frameworkName}</h2>
+                    </div>
+                    <button 
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-8 px-3 py-1 bg-muted text-muted-foreground hover:bg-muted-foreground hover:text-primary-foreground hover-elevate active-elevate-2 gap-2"
+                        onclick="handleExport('${analysis.frameworkName}')"
+                    >
+                        <i data-lucide="download" class="h-4 w-4"></i>
+                        Export
+                    </button>
+                </div>
+                
+                <div class="space-y-6">
+                    ${analysis.sections.map(section => `
+                        <div>
+                            <h3 class="mb-3 text-lg font-semibold text-foreground">${section.title}</h3>
+                            <ul class="space-y-2 font-body leading-relaxed">
+                                ${section.insights.map(insight => `
+                                    <li class="flex gap-3">
+                                        <span class="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-500"></span>
+                                        <span class="text-foreground">${insight}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            return card;
+        }
+
+        function renderSummaryCard() {
+            const { problemStatement, assumptions } = window.appState;
+            
+            const card = document.createElement('div');
+            card.className = 'bg-card border border-card-border p-6 rounded-xl space-y-4 shadow-sm';
+
+            card.innerHTML = `
+                <div class="space-y-4">
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-1">Problem Statement</h3>
+                        <p class="font-body text-muted-foreground">${problemStatement}</p>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3">Assumptions (${assumptions.length})</h3>
+                        <ul class="space-y-1 font-body text-muted-foreground list-disc pl-5">
+                            ${assumptions.map(a => `<li>${a.text}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        // --- 5. RESULTS GENERATION LOGIC ---
+
+        async function generateAllAnalyses() {
+            const { selectedFrameworks } = window.appState;
+            const totalFrameworks = selectedFrameworks.length;
+            let results = [];
+
+            for (let i = 0; i < totalFrameworks; i++) {
+                const frameworkId = selectedFrameworks[i];
+                const framework = FRAMEWORKS.find(f => f.id === frameworkId);
+
+                // Update UI for loading status
+                updateStateAndRender({
+                    currentFramework: framework.name,
+                    progress: (i / totalFrameworks) * 100,
+                });
+
+                try {
+                    const result = await fetchBadAnalysis(frameworkId);
+                    results.push(result);
+                    
+                    // Update final result state after each successful call
+                    updateStateAndRender({
+                        analysisResults: [...results],
+                        progress: ((i + 1) / totalFrameworks) * 100,
+                    });
+                } catch (e) {
+                    console.error(`Failed to generate analysis for ${framework.name}`, e);
+                    // Continue to next framework even if one fails
+                }
+            }
+
+            // Final state update
+            updateStateAndRender({
+                isLoading: false,
+                currentFramework: null,
+                progress: 100,
+            });
+            showToast("All analysis completed!", 'success');
+        }
+
+        // --- 6. NAVIGATION BUTTONS & EXPORT ---
+        
+        function renderNavigationButtons() {
+            const { currentStep } = window.appState;
+            const isLastStep = currentStep === STEPS.length - 1;
+
+            const navDiv = document.createElement('div');
+            navDiv.className = 'fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background shadow-lg';
+            navDiv.innerHTML = `
+                <div class="mx-auto max-w-7xl px-6 py-4 flex justify-between">
+                    <button
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 border border-border bg-background text-foreground hover:bg-muted hover-elevate active-elevate-2 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onclick="handleBack()"
+                        ${currentStep === 0 ? 'disabled' : ''}
+                    >
+                        <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                        Back
+                    </button>
+                    <button
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 hover-elevate active-elevate-2 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onclick="handleNext()"
+                    >
+                        ${isLastStep ? '<i data-lucide="brain" class="h-4 w-4"></i>Analyze' : '<i data-lucide="arrow-right" class="h-4 w-4"></i>Next'}
+                    </button>
+                </div>
+            `;
+            return navDiv;
+        }
+
+        function handleExport(frameworkName) {
+            const analysis = window.appState.analysisResults.find(a => a.frameworkName === frameworkName);
+            if (!analysis) return;
+
+            const textContent = formatAnalysisForExport(analysis, frameworkName);
+            const filename = `DAID_Great_Advice_${frameworkName.replace(/\s/g, '_')}.txt`;
+            downloadTextFile(textContent, filename);
+            showToast(`Exported LLM driven analysis for ${frameworkName}!`, 'success');
+        }
+
+        function handleExportAll() {
+            const allAnalyses = window.appState.analysisResults;
+            if (allAnalyses.length === 0) return;
+
+            let fullContent = `DAID - Decision & Action Intelligence Designer: Complete Report\n`;
+            fullContent += `--------------------------------------------------------------------------\n\n`;
+            
+            fullContent += `Problem Statement: ${window.appState.problemStatement}\n`;
+            fullContent += `Assumptions:\n - ${window.appState.assumptions.map(a => a.text).join('\n - ')}\n\n`;
+
+            allAnalyses.forEach((analysis, index) => {
+                fullContent += formatAnalysisForExport(analysis, analysis.frameworkName, false);
+                if (index < allAnalyses.length - 1) fullContent += `\n\n==================================================\n\n`;
+            });
+
+            const filename = `DAID_All_Decisions_Report.txt`;
+            downloadTextFile(fullContent, filename);
+            showToast("Exported all analyses in one file!", 'success');
+        }
+
+        function formatAnalysisForExport(analysis, frameworkName, includeSummary = true) {
+            let text = '';
+            text += `[FRAMEWORK: ${frameworkName}]\n`;
+            if (includeSummary) {
+                 text += `Problem: ${window.appState.problemStatement}\n`;
+                 text += `Assumptions: ${window.appState.assumptions.map(a => a.text).join('; ')}\n`;
+                 text += `\n`;
+            }
+
+            analysis.sections.forEach(section => {
+                text += `\n--- ${section.title.toUpperCase()} ---\n`;
+                section.insights.forEach(insight => {
+                    text += `- ${insight}\n`;
+                });
+            });
+            return text;
+        }
+
+        function downloadTextFile(text, filename) {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- 7. INITIALIZATION ---
+
+        function initApp() {
+            // Check for Firebase initialization utility and run it
+            if (window.initFirebase) {
+                window.initFirebase();
+            } else {
+                console.error("Firebase initialization function not found. Did the import fail?");
+            }
+
+            render();
+        }
+
+        // Attach to window load to ensure all scripts are ready
+        window.addEventListener('load', initApp);
+
+    </script>
+</body>
+</html>
