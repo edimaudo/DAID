@@ -324,19 +324,15 @@
         // Common API Caller Function
         async function callGemini(userQuery) {
             // 1. Resolve API Key Logic
-            // Priority: Local const (for Canvas) -> Global Window var (for Vercel injection)
-            const localApiKey = ""; // Leave as-is for Canvas
-            let apiKey = localApiKey;
-
-            // If local key is empty, check for global injection (Vercel support)
-            if (!apiKey && typeof window !== 'undefined' && window.GEMINI_API_KEY) {
-                apiKey = window.GEMINI_API_KEY;
-            }
+            // The 'apiKey' constant is targeted by the environment for injection.
+            const apiKey = ""; 
+            
+            // Check for Vercel environment variable or fall back to the injected key
+            const activeKey = (typeof window !== 'undefined' && window.GEMINI_API_KEY) ? window.GEMINI_API_KEY : apiKey;
 
             // 2. Define Version
-            // Using the specific preview version as requested: gemini-2.5-flash
             const modelVersion = "gemini-2.5-flash";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=${activeKey}`;
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
@@ -387,7 +383,7 @@
                             continue;
                         }
                         // Improved Error Handling for Missing Key
-                        if (response.status === 400 && (!apiKey || apiKey.trim() === '')) {
+                        if (response.status === 400 && (!activeKey || activeKey.trim() === '')) {
                             throw new Error("Missing API Key. Ensure GEMINI_API_KEY is set in Vercel or injected.");
                         }
                         throw new Error(`API error: ${response.status} ${response.statusText}`);
