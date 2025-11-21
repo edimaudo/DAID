@@ -10,11 +10,14 @@ mkdir -p public
 # Vercel needs index.html to load the site automatically.
 cp app.html public/index.html
 
-# 3. Inject the Vercel Environment Variable into the final index.html
-# Use the more compatible 'sed -i.bak' syntax to ensure in-place editing works on Linux/macOS environments.
-sed -i.bak "s|const apiKey = \"\";|const apiKey = \"$GEMINI_API_KEY\";|g" public/index.html
+# 3. Inject the Vercel Environment Variable using a temporary file (UNIVERSALLY COMPATIBLE)
+INPUT_FILE="public/index.html"
+TEMP_FILE="public/index.html.tmp"
 
-# 4. Remove the temporary backup file created by sed (public/index.html.bak)
-rm public/index.html.bak
+# Execute sed: find the placeholder, replace it with the key, and write to a temporary file
+sed "s|const apiKey = \"\";|const apiKey = \"$GEMINI_API_KEY\";|g" "$INPUT_FILE" > "$TEMP_FILE"
+
+# Move the temporary file over the original file
+mv "$TEMP_FILE" "$INPUT_FILE"
 
 echo "Build successful. public/index.html created with API Key injected."
