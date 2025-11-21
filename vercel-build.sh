@@ -3,31 +3,18 @@
 # Stop immediately if any command fails
 set -e
 
-echo "--- STARTING BUILD ---"
-
-# 1. Ensure the public folder exists
+# 1. Create the standard output directory
 mkdir -p public
 
-# 2. Smart Copy: Find the source file and create public/index.html
-# If app.html is in the root, copy it to public/index.html
-if [ -f "app.html" ]; then
-    cp app.html public/index.html
-    echo "✅ Copied root app.html to public/index.html"
+# 2. Copy the source file (app.html) and rename it to the target (index.html)
+# Vercel needs index.html to load the site automatically.
+cp app.html public/index.html
 
-# If app.html is ALREADY in public, duplicate it as index.html (if index.html doesn't exist)
-elif [ -f "public/app.html" ] && [ ! -f "public/index.html" ]; then
-    cp public/app.html public/index.html
-    echo "✅ Copied public/app.html to public/index.html"
-fi
+# 3. Inject the Vercel Environment Variable into the final index.html
+# Use the more compatible 'sed -i.bak' syntax to ensure in-place editing works on Linux/macOS environments.
+sed -i.bak "s|const apiKey = \"\";|const apiKey = \"$GEMINI_API_KEY\";|g" public/index.html
 
-# 3. Inject API Key into the final index.html
-# This ensures the file served to users (index.html) has the key
-if [ -f "public/index.html" ]; then
-    sed -i "s|const apiKey = \"\";|const apiKey = \"$GEMINI_API_KEY\";|g" public/index.html
-    echo "✅ Injected API Key into public/index.html"
-else
-    echo "❌ ERROR: public/index.html was not found. Build failed."
-    exit 1
-fi
+# 4. Remove the temporary backup file created by sed (public/index.html.bak)
+rm public/index.html.bak
 
-echo "--- BUILD COMPLETE ---"
+echo "Build successful. public/index.html created with API Key injected."
