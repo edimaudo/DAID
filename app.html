@@ -242,29 +242,32 @@
             { value: "personal", label: "Personal" },
         ];
 
-        // System Instruction for the "Bad Decision" Twist
-        const BAD_DECISION_SYSTEM_PROMPT = `
+        // System Instruction - Updated for Smart Decision Making
+        const SYSTEM_PROMPT = `
             You are the Decision & Action Intelligence Designer (DAID), an AI dedicated to providing the best strategic advice possible. 
-            You must use the provided Problem Statement, Assumptions, and Framework to generate analyses that are correct, logically sound, can be justified to stakeholders, or fundamentally sound. 
-            Your goal is to ensure the user makes a smart decision or make the best use of allocated resources. 
             
+            Your goal is to ensure the user makes a smart decision based on their Problem Statement and Assumptions.
             
+            You will be provided with:
+            1. A Problem Statement.
+            2. A list of Assumptions.
+            3. A specific Framework to apply (OR you will be asked to select the best ones).
+
             Format the output STRICTLY as a JSON object with the following structure:
             {
-              "sections": [
+              "analyses": [
                 {
-                  "title": "A clear Title for Section 1",
-                  "insights": [
-                    "A clear and logical insight.",
-                    "An insight that encourages good and smart risk taking.",
-                    "An insight based on a clear assumptions or constraints."
-                  ]
-                },
-                {
-                  "title": "Smart and clear Title",
-                  "insights": [
-                    "An insight that take into consideration constraints or costs.",
-                    "An insight that prioritizes sound judgement and potentially long term stability."
+                  "framework_name": "Name of the Framework",
+                  "why_selected": "A clear explanation of why this framework is appropriate for this specific problem.",
+                  "decision": "The core decision or recommendation derived from applying this framework.",
+                  "sections": [
+                    {
+                      "title": "Section Title (e.g., Analysis, Key Factors, Risks)",
+                      "insights": [
+                        "Insight 1",
+                        "Insight 2"
+                      ]
+                    }
                   ]
                 }
               ]
@@ -318,37 +321,48 @@
             }, 5000);
         }
 
-        async function fetchBadAnalysis(frameworkId) {
-            const framework = FRAMEWORKS.find(f => f.id === frameworkId);
-            if (!framework) return;
+        // Common API Caller Function
+        async function callGemini(userQuery) {
+            // 1. Resolve API Key Logic
+            // Priority: Local const (for Canvas) -> Global Window var (for Vercel injection)
+            const localApiKey = ""; // Leave as-is for Canvas
+            let apiKey = localApiKey;
 
-            const userQuery = `
-                Generate a smart analysis using the ${framework.name} framework.
-                Problem Statement: "${window.appState.problemStatement}"
-                Assumptions: ${window.appState.assumptions.map(a => a.text).join('; ')}
-                Based on these inputs, generate a logically sound and balanced risk strategic analysis.
-            `;
+            // If local key is empty, check for global injection (Vercel support)
+            if (!apiKey && typeof window !== 'undefined' && window.GEMINI_API_KEY) {
+                apiKey = window.GEMINI_API_KEY;
+            }
 
-            const apiKey = "" // Leave as-is for Canvas
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            // 2. Define Version
+            // Using the specific preview version as requested: gemini-2.5-flash
+            const modelVersion = "gemini-2.5-flash";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=${apiKey}`;
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: BAD_DECISION_SYSTEM_PROMPT }] },
+                systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
                         type: "OBJECT",
                         properties: {
-                            "sections": {
+                            "analyses": {
                                 type: "ARRAY",
                                 items: {
                                     type: "OBJECT",
                                     properties: {
-                                        "title": { "type": "STRING" },
-                                        "insights": {
+                                        "framework_name": { "type": "STRING" },
+                                        "why_selected": { "type": "STRING" },
+                                        "decision": { "type": "STRING" },
+                                        "sections": {
                                             "type": "ARRAY",
-                                            "items": { "type": "STRING" }
+                                            "items": {
+                                                "type": "OBJECT",
+                                                "properties": {
+                                                    "title": { "type": "STRING" },
+                                                    "insights": { "type": "ARRAY", "items": { "type": "STRING" } }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -357,9 +371,8 @@
                     }
                 }
             };
-            
-            let result;
-            const maxRetries = 5;
+
+            const maxRetries = 3;
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fetch(apiUrl, {
@@ -369,72 +382,105 @@
                     });
 
                     if (!response.ok) {
-                        if (response.status === 429 && i < maxRetries - 1) {
-                            const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                            await new Promise(resolve => setTimeout(resolve, delay));
+                        if (response.status === 429) {
+                            await new Promise(r => setTimeout(r, 2000 * (i + 1)));
                             continue;
                         }
-                        throw new Error(`API call failed with status: ${response.status}`);
+                        // Improved Error Handling for Missing Key
+                        if (response.status === 400 && (!apiKey || apiKey.trim() === '')) {
+                            throw new Error("Missing API Key. Ensure GEMINI_API_KEY is set in Vercel or injected.");
+                        }
+                        throw new Error(`API error: ${response.status} ${response.statusText}`);
                     }
-
-                    result = await response.json();
-                    break; 
-
-                } catch (error) {
-                    console.error("API call error:", error);
-                    if (i === maxRetries - 1) {
-                        showToast(`Failed to get analysis for ${framework.name}.`, 'error');
-                        throw error;
-                    }
-                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return await response.json();
+                } catch (e) {
+                    if (i === maxRetries - 1) throw e;
+                    await new Promise(r => setTimeout(r, 2000));
                 }
             }
+        }
+
+        async function fetchManualAnalysis(frameworkId) {
+            const framework = FRAMEWORKS.find(f => f.id === frameworkId);
+            if (!framework) return null;
+
+            const userQuery = `
+                Perform a strategic analysis using the framework: "${framework.name}".
+                
+                Problem: "${window.appState.problemStatement}"
+                Assumptions: "${window.appState.assumptions.map(a => a.text).join('; ')}"
+                
+                1. Explain why this framework ("${framework.name}") is useful here.
+                2. Apply the framework to generate a decision.
+                3. Provide detailed insights sections.
+            `;
 
             try {
-                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!text) throw new Error("Received empty response from LLM.");
-
-                const parsedJson = JSON.parse(text);
-                return {
-                    frameworkId: frameworkId,
-                    frameworkName: framework.name,
-                    sections: parsedJson.sections || []
-                };
-
+                const result = await callGemini(userQuery);
+                const analysis = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const parsed = JSON.parse(analysis);
+                return parsed.analyses[0]; // Expecting single result
             } catch (e) {
-                console.error("Error parsing LLM response:", e);
-                showToast(`LLM response error for ${framework.name}.`, 'error');
+                console.error("Manual Analysis Error:", e);
                 return {
-                    frameworkId: frameworkId,
-                    frameworkName: framework.name,
-                    sections: [{
-                        title: "Analysis Error",
-                        insights: ["Could not generate analysis due to a technical error."]
-                    }]
+                    framework_name: framework.name,
+                    why_selected: "Manual selection.",
+                    decision: "Error generating decision.",
+                    sections: [{ title: "Error", insights: ["Could not generate analysis. " + e.message] }]
                 };
             }
         }
 
+        async function fetchAutoAnalysis() {
+            // Provide a list of available frameworks to the model so it can choose valid ones
+            const frameworkList = FRAMEWORKS.map(f => `${f.name} (${f.description})`).join(', ');
+            
+            const userQuery = `
+                Analyze the following Problem and Assumptions. 
+                
+                Problem: "${window.appState.problemStatement}"
+                Assumptions: "${window.appState.assumptions.map(a => a.text).join('; ')}"
+                
+                Task:
+                1. Select the top 1 to 3 most appropriate frameworks from this list: [${frameworkList}].
+                2. For EACH selected framework, perform the analysis.
+                3. Provide the 'why_selected' rationale, the 'decision', and 'sections' for each.
+            `;
+
+            try {
+                const result = await callGemini(userQuery);
+                const analysis = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const parsed = JSON.parse(analysis);
+                return parsed.analyses || [];
+            } catch (e) {
+                console.error("Auto Analysis Error:", e);
+                showToast("DAID encountered an error selecting frameworks. " + e.message, "error");
+                return [];
+            }
+        }
+
         async function generateAllAnalyses() {
-            updateStateAndRender({ isLoading: true, progress: 0, analysisResults: [] });
+            updateStateAndRender({ isLoading: true, progress: 10, analysisResults: [] });
             
-            const total = window.appState.selectedFrameworks.length;
-            const results = [];
+            let results = [];
             
-            for (let i = 0; i < total; i++) {
-                const fwId = window.appState.selectedFrameworks[i];
-                updateStateAndRender({ currentFramework: FRAMEWORKS.find(f => f.id === fwId)?.name });
-                
-                try {
-                    const result = await fetchBadAnalysis(fwId);
-                    if (result) results.push(result);
-                } catch (err) {
-                    console.error(err);
+            if (window.appState.frameworkSelectionMode === 'auto') {
+                updateStateAndRender({ currentFramework: "DAID is thinking..." });
+                // Auto Mode: One smart call to select AND analyze
+                results = await fetchAutoAnalysis();
+                updateStateAndRender({ progress: 100 });
+            } else {
+                // Manual Mode: Loop through selected
+                const total = window.appState.selectedFrameworks.length;
+                for (let i = 0; i < total; i++) {
+                    const fwId = window.appState.selectedFrameworks[i];
+                    const fwName = FRAMEWORKS.find(f => f.id === fwId)?.name;
+                    updateStateAndRender({ currentFramework: fwName, progress: Math.round(((i) / total) * 100) });
+                    
+                    const res = await fetchManualAnalysis(fwId);
+                    if (res) results.push(res);
                 }
-                
-                const progress = Math.round(((i + 1) / total) * 100);
-                updateStateAndRender({ progress });
+                updateStateAndRender({ progress: 100 });
             }
             
             updateStateAndRender({ 
@@ -524,7 +570,8 @@
                 return;
             }
 
-            if (currentStep === 2 && window.appState.selectedFrameworks.length === 0) {
+            // Validation: Only enforce selection if in MANUAL mode
+            if (currentStep === 2 && window.appState.frameworkSelectionMode === 'manual' && window.appState.selectedFrameworks.length === 0) {
                 showToast("Select at least one framework to generate a logical analysis.", 'warning');
                 return;
             }
@@ -642,10 +689,12 @@
             // But here we just update global state on change
             setTimeout(() => {
                 const textarea = document.getElementById('problem-input');
-                textarea.addEventListener('input', (e) => {
-                    window.appState.problemStatement = e.target.value;
-                });
-                textarea.focus();
+                if(textarea) {
+                    textarea.addEventListener('input', (e) => {
+                        window.appState.problemStatement = e.target.value;
+                    });
+                    textarea.focus();
+                }
             }, 0);
 
             return container;
@@ -701,7 +750,10 @@
                 </div>
             `;
             
-            setTimeout(() => document.getElementById('assumption-input').focus(), 0);
+            setTimeout(() => {
+                const el = document.getElementById('assumption-input');
+                if(el) el.focus();
+            }, 0);
 
             return container;
         }
@@ -719,7 +771,6 @@
             updateStateAndRender({ assumptions: window.appState.assumptions.filter(a => a.id !== id) });
         }
 
-        // --- UPDATED FRAMEWORK SELECTION LOGIC ---
         function renderFrameworkStep() {
             const container = document.createElement('div');
             container.className = 'space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500 pb-20';
@@ -755,7 +806,7 @@
                     </div>
                     <div class="flex-1">
                         <h3 class="text-lg font-semibold ${isAuto ? 'text-primary' : 'text-foreground'}">Let DAID choose the right framework for you</h3>
-                        <p class="text-sm text-muted-foreground">Automated recommendation based on your problem statement.</p>
+                        <p class="text-sm text-muted-foreground">DAID will review your problem and assumptions to select the best frameworks.</p>
                     </div>
                     <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center ${isAuto ? 'border-primary bg-primary' : 'border-muted-foreground/30'}">
                         ${isAuto ? '<div class="w-2.5 h-2.5 bg-background rounded-full"></div>' : ''}
@@ -766,40 +817,14 @@
             if (isAuto) {
                 autoContent += `
                     <div class="px-5 pb-6 pl-[4.5rem] pr-4 animate-in slide-in-from-top-2 fade-in duration-300">
-   
-                        
-                        ${selectedIds.length > 0 ? `
-                            <div class="mt-4 pt-4 border-t border-primary/10">
-                                <span class="text-xs font-semibold text-primary uppercase tracking-wider">Selected by DAID</span>
-                                <div class="flex flex-wrap gap-2 mt-2">
-                                    ${selectedIds.map(id => {
-                                        const f = FRAMEWORKS.find(x => x.id === id);
-                                        return `<span class="inline-flex items-center rounded-full border border-transparent bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20">${f ? f.name : id}</span>`;
-                                    }).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
+                        <p class="text-sm text-muted-foreground mb-4">
+                            Click "Generate Analysis" to let DAID analyze your problem and automatically select the most relevant strategic frameworks.
+                        </p>
                     </div>
                 `;
             }
             autoCard.innerHTML = autoContent;
             container.appendChild(autoCard);
-
-            // Bind click for the button inside Auto card (needs to stop propagation)
-            if (isAuto) {
-                setTimeout(() => {
-                    const btn = document.getElementById('run-auto-btn');
-                    if (btn) {
-                        btn.onclick = (e) => {
-                            e.stopPropagation();
-                            // Logic: Lock to auto (already is), select top 4 frameworks
-                            const top4 = FRAMEWORKS.slice(0, 4).map(f => f.id);
-                            updateStateAndRender({ selectedFrameworks: top4 });
-                            showToast("DAID has selected recommended frameworks.");
-                        };
-                    }
-                }, 0);
-            }
 
             // --- CARD 2: Manual Selection ---
             const manualCard = document.createElement('div');
@@ -879,7 +904,6 @@
         }
 
         function toggleFramework(id) {
-            // Ensure manual mode (redundant if grid is shown, but per requirement)
             const currentMode = window.appState.frameworkSelectionMode;
             let newMode = currentMode;
             if (currentMode !== 'manual') {
@@ -904,45 +928,90 @@
             const container = document.createElement('div');
             container.className = 'space-y-8 animate-in slide-in-from-bottom-4 fade-in duration-500 pb-20';
 
+            // Summary Section with Problem and Assumptions
+            const summaryHtml = `
+                <div class="bg-muted/30 rounded-xl p-6 border border-border">
+                     <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <i data-lucide="clipboard-list" class="w-5 h-5 text-primary"></i>
+                        Analysis Context
+                    </h2>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Problem Statement</h4>
+                            <p class="text-sm text-foreground italic">"${window.appState.problemStatement}"</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Assumptions</h4>
+                            <ul class="list-disc list-inside text-sm text-foreground space-y-1">
+                                ${window.appState.assumptions.length > 0 
+                                    ? window.appState.assumptions.map(a => `<li>${a.text}</li>`).join('') 
+                                    : '<li class="text-muted-foreground">No specific assumptions listed.</li>'}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+
             container.innerHTML = `
                 <div class="text-center space-y-2 mb-8">
                     <h2 class="text-3xl font-bold tracking-tight">Analysis Results</h2>
-                    <p class="text-muted-foreground">Here are the insights generated for your problem.</p>
+                    <p class="text-muted-foreground">Strategic insights generated by DAID based on your inputs.</p>
                 </div>
                 
-                <div class="grid grid-cols-1 gap-8">
+                ${summaryHtml}
+
+                <div class="grid grid-cols-1 gap-8 mt-8">
                     ${window.appState.analysisResults.map(res => `
                         <div class="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                            <div class="bg-muted/50 px-6 py-4 border-b border-border flex items-center justify-between">
-                                <h3 class="font-semibold text-lg flex items-center gap-2">
-                                    <div class="p-1.5 bg-primary/10 rounded text-primary">
-                                        <i data-lucide="layers" class="w-5 h-5"></i>
-                                    </div>
-                                    ${res.frameworkName}
+                            <div class="bg-primary/5 px-6 py-4 border-b border-border flex items-center justify-between">
+                                <h3 class="font-bold text-lg flex items-center gap-2 text-primary">
+                                    <i data-lucide="layers" class="w-5 h-5"></i>
+                                    ${res.framework_name}
                                 </h3>
                             </div>
                             <div class="p-6 space-y-6">
-                                ${res.sections.map(sec => `
-                                    <div class="space-y-2">
-                                        <h4 class="font-medium text-foreground flex items-center gap-2">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                            ${sec.title}
-                                        </h4>
-                                        <ul class="space-y-2 pl-4">
-                                            ${sec.insights.map(insight => `
-                                                <li class="text-sm text-muted-foreground leading-relaxed list-disc marker:text-muted-foreground/50">
-                                                    ${insight}
-                                                </li>
-                                            `).join('')}
-                                        </ul>
-                                    </div>
-                                `).join('')}
+                                
+                                <!-- Selection Logic -->
+                                <div class="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                                    <h4 class="text-xs font-bold text-blue-600 uppercase tracking-wide mb-1">Why this Framework?</h4>
+                                    <p class="text-sm text-blue-900">${res.why_selected}</p>
+                                </div>
+
+                                <!-- The Decision -->
+                                <div>
+                                    <h4 class="font-bold text-lg text-foreground mb-2 flex items-center gap-2">
+                                        <i data-lucide="gavel" class="w-5 h-5 text-indigo-600"></i>
+                                        Strategic Decision
+                                    </h4>
+                                    <p class="text-base text-foreground leading-relaxed p-3 bg-muted rounded-md border-l-4 border-indigo-500">
+                                        ${res.decision}
+                                    </p>
+                                </div>
+
+                                <!-- Detailed Sections -->
+                                <div class="space-y-4 pt-4 border-t border-border">
+                                    ${res.sections.map(sec => `
+                                        <div class="space-y-2">
+                                            <h4 class="font-semibold text-foreground flex items-center gap-2 text-sm">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                                                ${sec.title}
+                                            </h4>
+                                            <ul class="space-y-2 pl-4">
+                                                ${sec.insights.map(insight => `
+                                                    <li class="text-sm text-muted-foreground leading-relaxed list-disc marker:text-muted-foreground/50">
+                                                        ${insight}
+                                                    </li>
+                                                `).join('')}
+                                            </ul>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
                         </div>
                     `).join('')}
                 </div>
 
-                <div class="flex justify-center mt-12">
+                <div class="flex justify-center mt-12 pb-12">
                     <button onclick="handleNewAnalysis()" class="text-sm text-muted-foreground hover:text-primary underline underline-offset-4 transition-colors">
                         Start Over
                     </button>
@@ -961,8 +1030,8 @@
                         <div class="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
                     </div>
                     <div class="text-center space-y-1">
-                        <p class="font-medium text-lg">Analyzing...</p>
-                        <p class="text-sm text-muted-foreground">Applying ${window.appState.currentFramework || 'framework'} logic</p>
+                        <p class="font-medium text-lg">Generating Analysis...</p>
+                        <p class="text-sm text-muted-foreground">${window.appState.currentFramework || 'DAID is thinking'}</p>
                     </div>
                     <div class="w-64 h-2 bg-muted rounded-full overflow-hidden mt-4">
                         <div class="h-full bg-primary transition-all duration-300 ease-out" style="width: ${window.appState.progress}%"></div>
