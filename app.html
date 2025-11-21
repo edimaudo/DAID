@@ -54,6 +54,9 @@
                 window.appState.userId = crypto.randomUUID();
             }
         };
+        
+        // Start init immediately
+        window.initFirebase();
     </script>
     
     <style>
@@ -76,10 +79,7 @@
             --muted-foreground: hsl(220 13% 45%); /* Mid Gray */
         }
         
-        /* Map custom variables to Tailwind JIT config */
-        /* NOTE: Tailwind JIT is loaded via the script tag, so we need to inject the colors */
-        
-        /* Custom Elevation Classes (adapted from original CSS) */
+        /* Custom Elevation Classes */
         .hover-elevate:hover:not(.no-default-hover-elevate)::after {
             background-color: var(--elevate-1);
         }
@@ -133,12 +133,21 @@
         .border-primary { border-color: var(--primary); }
         .ring-primary\/20 { --tw-ring-color: rgba(66, 133, 244, 0.2); }
         .bg-primary\/10 { background-color: rgba(66, 133, 244, 0.1); }
+        
+        /* Transitions */
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .slide-in { animation: slideIn 0.5s ease-out; }
+        @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .transition-height { transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
     </style>
 </head>
 
 <body class="min-h-screen bg-background font-sans text-foreground">
     <div id="app-root">
-        <!-- Header will be rendered here -->
+        <!-- App content will be rendered here -->
     </div>
     <div id="toast-container" class="fixed top-4 right-4 z-50"></div>
 
@@ -152,82 +161,79 @@
         ];
 
         const FRAMEWORKS = [
-    // --- Original 8 Frameworks from app.html ---
-    { id: "swot", name: "SWOT Analysis", description: "Evaluate Strengths, Weaknesses, Opportunities, and Threats" },
-    { id: "porter-five-forces", name: "Porter's Five Forces", description: "Assess competitive dynamics and market forces" },
-    { id: "first-principles", name: "First Principles", description: "Break down complex problems to fundamental truths" },
-    { id: "design-thinking", name: "Design Thinking", description: "Human-centered iterative problem-solving approach" },
-    { id: "csd-matrix", name: "CSD Matrix", description: "Analyze Certainties, Suppositions, and Doubts" },
-    { id: "golden-circle", name: "Golden Circle", description: "Start with Why - Purpose, How, and What framework" },
-    { id: "cynefin", name: "The Cynefin Framework", description: "Understand decision context: simple, complicated, complex, or chaotic" },
-    { id: "decision-matrix", name: "Decision Matrix", description: "Quantitatively compare options against weighted criteria" },
-    
-    // --- New Frameworks Added from frameworks.txt ---
-    { id: "rice-ice", name: "RICE/ICE", description: "Prioritization frameworks: Reach, Impact, Confidence, Effort / Impact, Confidence, Ease" },
-    { id: "decision-trees", name: "Decision Trees", description: "Visualize potential outcomes, costs, and consequences of choices" },
-    { id: "impact-effort-matrix", name: "Impact Effort Matrix", description: "Prioritize initiatives based on potential impact versus required effort" },
-    { id: "ooda-loop", name: "OODA Loop", description: "Observe, Orient, Decide, Act—a rapid decision-making cycle" },
-    { id: "spade", name: "S.P.A.D.E", description: "Setting, People, Alternatives, Decide, Explain decision-making process" },
-    { id: "pdca", name: "PDCA (Plan-Do-Check-Act)", description: "Iterative management method for continuous process improvement" },
-    { id: "rapid", name: "RAPID framework", description: "Define roles: Recommend, Agree, Perform, Input, Decide" },
-    { id: "vroom-yetton", name: "Vroom-Yetton decision model", description: "Determine the optimum degree of subordinate participation in decision-making" },
-    { id: "star-model", name: "STAR model", description: "Task, Action, Result—used for behavioral interviewing and decision review" },
-    { id: "wrap", name: "WRAP framework", description: "Process for making better choices: Widen options, Reality-test assumptions, Attain distance, Prepare to be wrong" },
-    { id: "bridges", name: "BRIDGeS framework", description: "Facilitation technique for structuring brainstorming and decision-making" },
-    { id: "tdodar", name: "TDODAR decision model", description: "Time, Diagnose, Options, Decide, Assign, Review—for high-stakes, time-critical situations" },
-    { id: "daci", name: "DACI decision-making framework", description: "Define roles: Driver, Approver, Contributor, Informed" },
-    { id: "ladder-of-inference", name: "Ladder of inference", description: "Trace how beliefs and assumptions lead to actions" },
-    { id: "mcda", name: "Multi-Criteria Decision Analysis (MCDA)", description: "Evaluate complex options against multiple, sometimes conflicting, criteria" },
-    { id: "rpd", name: "Recognition-Primed Decision model (RPD)", description: "How people make decisions in high-pressure, time-constrained situations" },
-    { id: "maut", name: "Multi-Attribute Utility Theory (MAUT)", description: "Formal method for calculating the utility of multi-dimensional choices" },
-    { id: "foursquare-protocol", name: "Foursquare Protocol", description: "Structured method for generating ideas and prioritizing them" },
-    { id: "lightning-decision-jam", name: "Lightning Decision Jam", description: "Rapid-fire workshop for problem-solving and decision-making" },
-    { id: "pareto-analysis", name: "Pareto Analysis", description: "80/20 Rule—identifying the vital few contributors to a problem" },
-    { id: "fmea", name: "Failure Mode And Effects Analysis", description: "Systematically identify, evaluate, and mitigate potential product or process failures" },
-    { id: "blindspot-analysis", name: "Blindspot Analysis", description: "Identify overlooked assumptions or external factors that could impact a decision" },
-    { id: "comparable-company-analysis", name: "Comparable Company Analysis", description: "Valuation method using metrics from similar publicly traded companies" },
-    { id: "cost-benefit-analysis", name: "Cost-Benefit Analysis", description: "Systematically evaluate the total costs and benefits of a project or decision" },
-    { id: "agile-business-analysis", name: "Agile Business Analysis", description: "Applying BA practices within an Agile development environment" },
-    { id: "soar-analysis", name: "SOAR Analysis", description: "Strengths, Opportunities, Aspirations, Results—a positive, future-focused analysis" },
-    { id: "steeple-analysis", name: "STEEPLE Analysis", description: "Analyze Sociocultural, Technological, Economic, Environmental, Political, Legal, and Ethical factors" },
-    { id: "pestel-analysis", name: "PESTEL Analysis", description: "Analyze Political, Economic, Sociocultural, Technological, Environmental, and Legal factors" },
-    { id: "destep-analysis", name: "DESTEP Analysis", description: "Demographics, Economy, Sociocultural, Technology, Ecology, Politics—a macro-environmental scan" },
-    { id: "paired-comparison-analysis", name: "Paired Comparison Analysis", description: "Prioritization method by comparing each item in a list with every other item" },
-    { id: "hickam-dictum", name: "Hickam’s Dictum", description: "Decision principle: 'Patients can have as many diseases as they damn well please' (Avoid Occam's Razor tunnel vision)" },
-    { id: "occam-razor", name: "Occam’s Razor", description: "Decision principle: The simplest explanation is usually the best one" },
-    { id: "occam-broom", name: "Occam’s Broom", description: "Cognitive bias: Sweeping inconvenient data under the rug to maintain the simplest hypothesis" },
-    { id: "outcome-bias", name: "Outcome Bias", description: "Cognitive bias: Judging a decision based on the final outcome, rather than the quality of the decision at the time it was made" },
-    { id: "principle-agent-problem", name: "Principle-Agent Problem", description: "Conflict of interest when one person or entity (agent) acts on behalf of another (principal)" },
-    { id: "mendelow-matrix", name: "Mendelow Stakeholder Matrix", description: "Map stakeholders by Power and Interest to determine management strategy" },
-    { id: "go-no-go", name: "Go/No-Go Decision Making", description: "Simple binary decision point for project continuation" },
-    { id: "mckinsey-7-degrees", name: "McKinsey 7 Degrees of Freedom", description: "Framework for strategic growth—from expanding the core to creating white spaces" },
-    { id: "x-matrix", name: "X-Matrix", description: "Hoshin Kanri tool for deploying strategy across an organization" },
-    { id: "bcg-matrix", name: "BCG Growth-Share Matrix", description: "Portfolio planning based on market growth and relative market share" },
-    { id: "ansoff-matrix", name: "Ansoff's Matrix", description: "Framework for corporate growth strategy: Market Penetration, Development, Product Development, Diversification" },
-    { id: "scenario-planning", name: "Scenario Planning Matrix", description: "Develop and test strategies against multiple plausible futures" },
-    { id: "strategic-planning", name: "Strategic Planning", description: "General process of defining strategy and allocating resources" },
-    { id: "balanced-scorecard", name: "Balanced Scorecard Framework", description: "Measure performance from four perspectives: Financial, Customer, Internal Process, and Learning & Growth" },
-    { id: "capability-opportunity", name: "Capability vs Opportunity Analysis", description: "Assess internal capabilities against external market opportunities" },
-    { id: "mckinsey-strategy-house", name: "McKinsey Strategy House", description: "Framework for building a comprehensive corporate strategy" },
-    { id: "risk-matrix", name: "Risk Matrix", description: "Assess and prioritize risks by plotting the probability of occurrence against the severity of the impact" },
-    { id: "growth-readiness", name: "Growth Readiness Framework", description: "Evaluate an organization's preparedness for scaling operations" },
-    { id: "how-to-formulate-strategy", name: "How to Formulate a Strategy", description: "General guidance on creating a viable business strategy" },
-    { id: "corporate-strategy-process", name: "Corporate Strategy Process", description: "Steps and procedures for defining enterprise-wide strategy" },
-    { id: "red-vs-blue-ocean", name: "Red Ocean vs Blue Ocean Strategies", description: "Competing in existing markets vs. creating new, uncontested market spaces" },
-    { id: "mckinsey-7-s", name: "McKinsey 7-S Framework", description: "Analyze organizational effectiveness using seven interdependent factors: Strategy, Structure, Systems, Shared Values, Style, Staff, Skills" },
-    { id: "strategy-pyramid", name: "Strategy Pyramid", description: "Aligning corporate, business unit, and functional strategies" },
-    { id: "where-to-play", name: "Where to Play and How to Win", description: "Core questions in strategic decision-making" },
-    { id: "strategy-diamond", name: "Strategy Diamond", description: "Framework detailing five facets of strategy: Arenas, Vehicles, Differentiators, Staging, Economic Logic" },
-    { id: "vrio-analysis", name: "VRIO Analysis", description: "Evaluate resources for Value, Rarity, Imitability, and Organization for sustained competitive advantage" },
-    { id: "hypothesis-based-strategy", name: "Hypothesis Based Strategy", description: "Developing and testing strategic options through hypotheses" },
-    { id: "top-down-communication", name: "Top-Down Communication", description: "Methodology for cascading decisions and strategy from leadership to teams" },
-    { id: "ecosystem-strategy", name: "The Ecosystem Strategy", description: "Strategy focused on collaborating with external partners in a network" },
-    { id: "6-pillar-ceo-scorecard", name: "6 Pillar CEO Scorecard", description: "Performance measurement focusing on six key areas of CEO responsibility" },
-    { id: "operating-model-bridge", name: "Operating Model Bridge", description: "Tool for linking strategy to the operating model design" },
-    { id: "core-competencies", name: "Core Competencies", description: "Identify unique skills and technologies that provide competitive advantage" },
-    { id: "portfolio-of-initiatives", name: "Portfolio of Initiatives", description: "Organizing and prioritizing a collection of strategic projects" },
-    { id: "eisenhower-matrix", name: "Eisenhower Matrix", description: "Prioritize tasks by categorizing them based on Urgency and Importance" },
-];
+            { id: "swot", name: "SWOT Analysis", description: "Evaluate Strengths, Weaknesses, Opportunities, and Threats" },
+            { id: "porter-five-forces", name: "Porter's Five Forces", description: "Assess competitive dynamics and market forces" },
+            { id: "first-principles", name: "First Principles", description: "Break down complex problems to fundamental truths" },
+            { id: "design-thinking", name: "Design Thinking", description: "Human-centered iterative problem-solving approach" },
+            { id: "csd-matrix", name: "CSD Matrix", description: "Analyze Certainties, Suppositions, and Doubts" },
+            { id: "golden-circle", name: "Golden Circle", description: "Start with Why - Purpose, How, and What framework" },
+            { id: "cynefin", name: "The Cynefin Framework", description: "Understand decision context: simple, complicated, complex, or chaotic" },
+            { id: "decision-matrix", name: "Decision Matrix", description: "Quantitatively compare options against weighted criteria" },
+            { id: "rice-ice", name: "RICE/ICE", description: "Prioritization frameworks: Reach, Impact, Confidence, Effort / Impact, Confidence, Ease" },
+            { id: "decision-trees", name: "Decision Trees", description: "Visualize potential outcomes, costs, and consequences of choices" },
+            { id: "impact-effort-matrix", name: "Impact Effort Matrix", description: "Prioritize initiatives based on potential impact versus required effort" },
+            { id: "ooda-loop", name: "OODA Loop", description: "Observe, Orient, Decide, Act—a rapid decision-making cycle" },
+            { id: "spade", name: "S.P.A.D.E", description: "Setting, People, Alternatives, Decide, Explain decision-making process" },
+            { id: "pdca", name: "PDCA (Plan-Do-Check-Act)", description: "Iterative management method for continuous process improvement" },
+            { id: "rapid", name: "RAPID framework", description: "Define roles: Recommend, Agree, Perform, Input, Decide" },
+            { id: "vroom-yetton", name: "Vroom-Yetton decision model", description: "Determine the optimum degree of subordinate participation in decision-making" },
+            { id: "star-model", name: "STAR model", description: "Task, Action, Result—used for behavioral interviewing and decision review" },
+            { id: "wrap", name: "WRAP framework", description: "Process for making better choices: Widen options, Reality-test assumptions, Attain distance, Prepare to be wrong" },
+            { id: "bridges", name: "BRIDGeS framework", description: "Facilitation technique for structuring brainstorming and decision-making" },
+            { id: "tdodar", name: "TDODAR decision model", description: "Time, Diagnose, Options, Decide, Assign, Review—for high-stakes, time-critical situations" },
+            { id: "daci", name: "DACI decision-making framework", description: "Define roles: Driver, Approver, Contributor, Informed" },
+            { id: "ladder-of-inference", name: "Ladder of inference", description: "Trace how beliefs and assumptions lead to actions" },
+            { id: "mcda", name: "Multi-Criteria Decision Analysis (MCDA)", description: "Evaluate complex options against multiple, sometimes conflicting, criteria" },
+            { id: "rpd", name: "Recognition-Primed Decision model (RPD)", description: "How people make decisions in high-pressure, time-constrained situations" },
+            { id: "maut", name: "Multi-Attribute Utility Theory (MAUT)", description: "Formal method for calculating the utility of multi-dimensional choices" },
+            { id: "foursquare-protocol", name: "Foursquare Protocol", description: "Structured method for generating ideas and prioritizing them" },
+            { id: "lightning-decision-jam", name: "Lightning Decision Jam", description: "Rapid-fire workshop for problem-solving and decision-making" },
+            { id: "pareto-analysis", name: "Pareto Analysis", description: "80/20 Rule—identifying the vital few contributors to a problem" },
+            { id: "fmea", name: "Failure Mode And Effects Analysis", description: "Systematically identify, evaluate, and mitigate potential product or process failures" },
+            { id: "blindspot-analysis", name: "Blindspot Analysis", description: "Identify overlooked assumptions or external factors that could impact a decision" },
+            { id: "comparable-company-analysis", name: "Comparable Company Analysis", description: "Valuation method using metrics from similar publicly traded companies" },
+            { id: "cost-benefit-analysis", name: "Cost-Benefit Analysis", description: "Systematically evaluate the total costs and benefits of a project or decision" },
+            { id: "agile-business-analysis", name: "Agile Business Analysis", description: "Applying BA practices within an Agile development environment" },
+            { id: "soar-analysis", name: "SOAR Analysis", description: "Strengths, Opportunities, Aspirations, Results—a positive, future-focused analysis" },
+            { id: "steeple-analysis", name: "STEEPLE Analysis", description: "Analyze Sociocultural, Technological, Economic, Environmental, Political, Legal, and Ethical factors" },
+            { id: "pestel-analysis", name: "PESTEL Analysis", description: "Analyze Political, Economic, Sociocultural, Technological, Environmental, and Legal factors" },
+            { id: "destep-analysis", name: "DESTEP Analysis", description: "Demographics, Economy, Sociocultural, Technology, Ecology, Politics—a macro-environmental scan" },
+            { id: "paired-comparison-analysis", name: "Paired Comparison Analysis", description: "Prioritization method by comparing each item in a list with every other item" },
+            { id: "hickam-dictum", name: "Hickam’s Dictum", description: "Decision principle: 'Patients can have as many diseases as they damn well please' (Avoid Occam's Razor tunnel vision)" },
+            { id: "occam-razor", name: "Occam’s Razor", description: "Decision principle: The simplest explanation is usually the best one" },
+            { id: "occam-broom", name: "Occam’s Broom", description: "Cognitive bias: Sweeping inconvenient data under the rug to maintain the simplest hypothesis" },
+            { id: "outcome-bias", name: "Outcome Bias", description: "Cognitive bias: Judging a decision based on the final outcome, rather than the quality of the decision at the time it was made" },
+            { id: "principle-agent-problem", name: "Principle-Agent Problem", description: "Conflict of interest when one person or entity (agent) acts on behalf of another (principal)" },
+            { id: "mendelow-matrix", name: "Mendelow Stakeholder Matrix", description: "Map stakeholders by Power and Interest to determine management strategy" },
+            { id: "go-no-go", name: "Go/No-Go Decision Making", description: "Simple binary decision point for project continuation" },
+            { id: "mckinsey-7-degrees", name: "McKinsey 7 Degrees of Freedom", description: "Framework for strategic growth—from expanding the core to creating white spaces" },
+            { id: "x-matrix", name: "X-Matrix", description: "Hoshin Kanri tool for deploying strategy across an organization" },
+            { id: "bcg-matrix", name: "BCG Growth-Share Matrix", description: "Portfolio planning based on market growth and relative market share" },
+            { id: "ansoff-matrix", name: "Ansoff's Matrix", description: "Framework for corporate growth strategy: Market Penetration, Development, Product Development, Diversification" },
+            { id: "scenario-planning", name: "Scenario Planning Matrix", description: "Develop and test strategies against multiple plausible futures" },
+            { id: "strategic-planning", name: "Strategic Planning", description: "General process of defining strategy and allocating resources" },
+            { id: "balanced-scorecard", name: "Balanced Scorecard Framework", description: "Measure performance from four perspectives: Financial, Customer, Internal Process, and Learning & Growth" },
+            { id: "capability-opportunity", name: "Capability vs Opportunity Analysis", description: "Assess internal capabilities against external market opportunities" },
+            { id: "mckinsey-strategy-house", name: "McKinsey Strategy House", description: "Framework for building a comprehensive corporate strategy" },
+            { id: "risk-matrix", name: "Risk Matrix", description: "Assess and prioritize risks by plotting the probability of occurrence against the severity of the impact" },
+            { id: "growth-readiness", name: "Growth Readiness Framework", description: "Evaluate an organization's preparedness for scaling operations" },
+            { id: "how-to-formulate-strategy", name: "How to Formulate a Strategy", description: "General guidance on creating a viable business strategy" },
+            { id: "corporate-strategy-process", name: "Corporate Strategy Process", description: "Steps and procedures for defining enterprise-wide strategy" },
+            { id: "red-vs-blue-ocean", name: "Red Ocean vs Blue Ocean Strategies", description: "Competing in existing markets vs. creating new, uncontested market spaces" },
+            { id: "mckinsey-7-s", name: "McKinsey 7-S Framework", description: "Analyze organizational effectiveness using seven interdependent factors: Strategy, Structure, Systems, Shared Values, Style, Staff, Skills" },
+            { id: "strategy-pyramid", name: "Strategy Pyramid", description: "Aligning corporate, business unit, and functional strategies" },
+            { id: "where-to-play", name: "Where to Play and How to Win", description: "Core questions in strategic decision-making" },
+            { id: "strategy-diamond", name: "Strategy Diamond", description: "Framework detailing five facets of strategy: Arenas, Vehicles, Differentiators, Staging, Economic Logic" },
+            { id: "vrio-analysis", name: "VRIO Analysis", description: "Evaluate resources for Value, Rarity, Imitability, and Organization for sustained competitive advantage" },
+            { id: "hypothesis-based-strategy", name: "Hypothesis Based Strategy", description: "Developing and testing strategic options through hypotheses" },
+            { id: "top-down-communication", name: "Top-Down Communication", description: "Methodology for cascading decisions and strategy from leadership to teams" },
+            { id: "ecosystem-strategy", name: "The Ecosystem Strategy", description: "Strategy focused on collaborating with external partners in a network" },
+            { id: "6-pillar-ceo-scorecard", name: "6 Pillar CEO Scorecard", description: "Performance measurement focusing on six key areas of CEO responsibility" },
+            { id: "operating-model-bridge", name: "Operating Model Bridge", description: "Tool for linking strategy to the operating model design" },
+            { id: "core-competencies", name: "Core Competencies", description: "Identify unique skills and technologies that provide competitive advantage" },
+            { id: "portfolio-of-initiatives", name: "Portfolio of Initiatives", description: "Organizing and prioritizing a collection of strategic projects" },
+            { id: "eisenhower-matrix", name: "Eisenhower Matrix", description: "Prioritize tasks by categorizing them based on Urgency and Importance" },
+        ];
 
         const PROBLEM_CATEGORIES = [
             { value: "business", label: "Business" },
@@ -270,39 +276,41 @@
             problemStatement: "",
             selectedCategories: [],
             assumptions: [], // { id: string, text: string }[]
+            frameworkSelectionMode: 'auto', // 'auto' | 'manual'
             selectedFrameworks: [], // string[] of framework IDs
-            analysisResults: [], // { frameworkId: string, frameworkName: string, sections: { title: string, insights: string[] }[] }[]
+            analysisResults: [], 
             isLoading: false,
             progress: 0,
             currentFramework: null,
-            userId: 'anonymous-user', // Default, updated by Firebase later
+            userId: 'anonymous-user', 
         };
 
         // --- 2. UTILITIES & API INTERACTION ---
 
-        /** Simple utility to mimic class-name merging */
         const cn = (...classes) => classes.filter(Boolean).join(' ');
-
-        /** Simple UUID generator for assumption IDs */
         const generateUUID = () => crypto.randomUUID();
 
-        /** Toast Notification Utility */
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const color = type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-yellow-500' : 'bg-green-500';
             const toast = document.createElement('div');
-            toast.className = cn('p-4 mb-2 rounded-lg text-white shadow-lg transition-transform transform translate-x-full', color);
-            toast.textContent = message;
+            toast.className = cn('p-4 mb-2 rounded-lg text-white shadow-lg transition-transform transform translate-x-full flex items-center gap-2', color);
+            
+            // Simple icon based on type
+            let iconHtml = '';
+            if (type === 'error') iconHtml = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+            else if (type === 'warning') iconHtml = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+            else iconHtml = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+
+            toast.innerHTML = `${iconHtml}<span>${message}</span>`;
             
             container.appendChild(toast);
             
-            // Animate in
             setTimeout(() => {
                 toast.classList.remove('translate-x-full');
                 toast.classList.add('translate-x-0');
             }, 10);
 
-            // Animate out and remove
             setTimeout(() => {
                 toast.classList.remove('translate-x-0');
                 toast.classList.add('translate-x-full');
@@ -310,7 +318,6 @@
             }, 5000);
         }
 
-        /** LLM API Call with exponential backoff */
         async function fetchBadAnalysis(frameworkId) {
             const framework = FRAMEWORKS.find(f => f.id === frameworkId);
             if (!framework) return;
@@ -364,7 +371,6 @@
                     if (!response.ok) {
                         if (response.status === 429 && i < maxRetries - 1) {
                             const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                            console.warn(`Rate limit hit. Retrying in ${Math.round(delay / 1000)}s...`);
                             await new Promise(resolve => setTimeout(resolve, delay));
                             continue;
                         }
@@ -377,11 +383,10 @@
                 } catch (error) {
                     console.error("API call error:", error);
                     if (i === maxRetries - 1) {
-                        showToast(`Failed to get analysis for ${framework.name}. ${error.message}`, 'error');
+                        showToast(`Failed to get analysis for ${framework.name}.`, 'error');
                         throw error;
                     }
                     const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                    console.warn(`Error during fetch. Retrying in ${Math.round(delay / 1000)}s...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
@@ -399,60 +404,89 @@
 
             } catch (e) {
                 console.error("Error parsing LLM response:", e);
-                showToast(`LLM response was corrupted for ${framework.name}. Cannot generate bad advice.`, 'error');
+                showToast(`LLM response error for ${framework.name}.`, 'error');
                 return {
                     frameworkId: frameworkId,
                     frameworkName: framework.name,
                     sections: [{
-                        title: "Analysis Failure: Highly Questionable Logic",
-                        insights: ["Due to an unknown error, the AI has provided no concrete steps. This is probably a good sign that your idea is terrible. Do not proceed.", "Ignore all previous plans and trust your gut, which is usually wrong."]
+                        title: "Analysis Error",
+                        insights: ["Could not generate analysis due to a technical error."]
                     }]
                 };
             }
         }
 
+        async function generateAllAnalyses() {
+            updateStateAndRender({ isLoading: true, progress: 0, analysisResults: [] });
+            
+            const total = window.appState.selectedFrameworks.length;
+            const results = [];
+            
+            for (let i = 0; i < total; i++) {
+                const fwId = window.appState.selectedFrameworks[i];
+                updateStateAndRender({ currentFramework: FRAMEWORKS.find(f => f.id === fwId)?.name });
+                
+                try {
+                    const result = await fetchBadAnalysis(fwId);
+                    if (result) results.push(result);
+                } catch (err) {
+                    console.error(err);
+                }
+                
+                const progress = Math.round(((i + 1) / total) * 100);
+                updateStateAndRender({ progress });
+            }
+            
+            updateStateAndRender({ 
+                isLoading: false, 
+                analysisResults: results, 
+                currentStep: 3, // Move to results
+                currentFramework: null 
+            });
+        }
+
 
         // --- 3. STATE MUTATORS & NAVIGATION ---
 
-        /** Rerenders the application UI based on the current state. */
         function render() {
             const appRoot = document.getElementById('app-root');
-            appRoot.innerHTML = ''; // Clear previous content
+            appRoot.innerHTML = '';
 
             // Render Header
             appRoot.appendChild(renderHeader());
 
             // Render Main Content Area
             const mainContent = document.createElement('main');
-            mainContent.className = 'container mx-auto max-w-7xl px-6 py-12';
+            mainContent.className = 'container mx-auto max-w-5xl px-6 py-12 flex flex-col min-h-[calc(100vh-64px)]';
             
-            // Render Stepper (only on relevant steps)
+            // Render Stepper
             if (window.appState.currentStep < STEPS.length) {
                 mainContent.appendChild(renderStepper());
             }
 
-            // Render Current Step Content
-            const stepFunction = STEPS[window.appState.currentStep]?.component;
-            if (stepFunction && window[stepFunction]) {
-                mainContent.appendChild(window[stepFunction]());
-            } else if (window.appState.currentStep >= STEPS.length) {
-                // If it goes past the last step, maybe an error or finished state
-                mainContent.appendChild(renderNotFound());
+            // Render Content or Loading
+            const contentWrapper = document.createElement('div');
+            contentWrapper.className = "flex-grow mt-8";
+
+            if (window.appState.isLoading) {
+                contentWrapper.appendChild(renderLoading());
             } else {
-                mainContent.appendChild(renderNotFound());
+                const stepFunction = STEPS[window.appState.currentStep]?.component;
+                if (stepFunction && window[stepFunction]) {
+                    contentWrapper.appendChild(window[stepFunction]());
+                } else {
+                    contentWrapper.appendChild(renderNotFound());
+                }
             }
+            mainContent.appendChild(contentWrapper);
             
-            // Render Navigation Buttons
-            if (window.appState.currentStep < STEPS.length - 1) {
+            // Render Navigation (only if not loading and not on results step)
+            if (!window.appState.isLoading && window.appState.currentStep < STEPS.length - 1) {
                 mainContent.appendChild(renderNavigationButtons());
-            } else if (window.appState.currentStep === STEPS.length - 1) {
-                 // For the last step (Results), we just show the results, no next button.
-                 // The 'New Analysis' button is in the header.
             }
 
             appRoot.appendChild(mainContent);
             
-            // Re-render Lucide icons
             lucide.createIcons();
         }
 
@@ -468,12 +502,12 @@
         }
 
         function handleNewAnalysis() {
-            // Reset state to start a new analysis
             updateStateAndRender({
                 currentStep: 0,
                 problemStatement: "",
                 selectedCategories: [],
                 assumptions: [],
+                frameworkSelectionMode: 'auto',
                 selectedFrameworks: [],
                 analysisResults: [],
                 isLoading: false,
@@ -485,7 +519,6 @@
         async function handleNext() {
             const currentStep = window.appState.currentStep;
             
-            // Validation and special action before moving
             if (currentStep === 0 && !window.appState.problemStatement.trim()) {
                 showToast("The problem statement is required to proceed.", 'warning');
                 return;
@@ -497,7 +530,6 @@
             }
 
             if (currentStep === 2) {
-                updateStateAndRender({ currentStep: currentStep + 1, isLoading: true, progress: 0 });
                 await generateAllAnalyses();
             } else {
                 goToStep(currentStep + 1);
@@ -508,21 +540,22 @@
             goToStep(window.appState.currentStep - 1);
         }
 
-        // --- 4. STEP RENDERING FUNCTIONS ---
+        // --- 4. COMPONENTS ---
 
-        /** Renders the persistent Header component */
         function renderHeader() {
             const header = document.createElement('header');
-            header.className = 'sticky top-0 z-50 border-b border-border bg-background';
+            header.className = 'sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60';
             header.innerHTML = `
                 <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-                    <button onclick="handleNewAnalysis()" class="flex items-center gap-2 rounded-md px-3 py-2 -ml-3 hover-elevate active-elevate-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-primary"><path d="M12 2a3 3 0 0 0-3 3v2a2 2 0 0 1-2 2H5a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h2a2 2 0 0 1 2 2v2c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-2a2 2 0 0 1 2-2h2c1.1 0 2-.9 2-2v-2a2 2 0 0 0-2-2h-2a2 2 0 0 1-2-2V5a3 3 0 0 0-3-3Z"/></svg>
-                        <span class="text-xl font-bold">DAID</span>
+                    <button onclick="handleNewAnalysis()" class="flex items-center gap-2 rounded-md px-3 py-2 -ml-3 hover-elevate active-elevate-2 transition-all">
+                        <div class="bg-primary/10 p-1.5 rounded-md">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-primary"><path d="M12 2a3 3 0 0 0-3 3v2a2 2 0 0 1-2 2H5a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h2a2 2 0 0 1 2 2v2c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-2a2 2 0 0 1 2-2h2c1.1 0 2-.9 2-2v-2a2 2 0 0 0-2-2h-2a2 2 0 0 1-2-2V5a3 3 0 0 0-3-3Z"/></svg>
+                        </div>
+                        <span class="text-xl font-bold tracking-tight text-foreground">DAID</span>
                     </button>
                     
                     <button 
-                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 hover-elevate active-elevate-2 gap-2"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-9 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover-elevate active-elevate-2 gap-2"
                         onclick="handleNewAnalysis()"
                     >
                         <i data-lucide="plus" class="h-4 w-4"></i>
@@ -533,535 +566,444 @@
             return header;
         }
 
-        /** Renders the Stepper component */
         function renderStepper() {
-            const currentStep = window.appState.currentStep;
-            const stepperDiv = document.createElement('div');
-            stepperDiv.className = 'w-full mb-10';
+            const container = document.createElement('div');
+            container.className = 'w-full';
             
-            const stepsHtml = STEPS.map((step, index) => {
-                const isCompleted = index < currentStep;
-                const isCurrent = index === currentStep;
+            // Simplified stepper
+            let stepsHtml = '<div class="flex items-center justify-between relative">';
+            // Progress bar background
+            stepsHtml += '<div class="absolute left-0 top-1/2 w-full h-0.5 bg-muted -z-10"></div>';
+            // Active progress bar
+            const progressWidth = (window.appState.currentStep / (STEPS.length - 1)) * 100;
+            stepsHtml += `<div class="absolute left-0 top-1/2 h-0.5 bg-primary -z-10 transition-all duration-500" style="width: ${progressWidth}%"></div>`;
 
-                let indicatorClasses = "flex h-10 w-10 items-center justify-center rounded-full border-2 font-semibold transition-colors";
-                let textClasses = "mt-2 text-sm font-medium";
-                let connectorClasses = cn("mx-4 h-0.5 w-16 transition-colors md:w-24", isCompleted ? "bg-primary" : "bg-muted");
-
-                if (isCompleted) {
-                    indicatorClasses = cn(indicatorClasses, "border-primary bg-primary text-primary-foreground");
-                    textClasses = cn(textClasses, "text-foreground");
-                } else if (isCurrent) {
-                    indicatorClasses = cn(indicatorClasses, "border-primary bg-background text-primary");
-                    textClasses = cn(textClasses, "text-foreground");
-                } else {
-                    indicatorClasses = cn(indicatorClasses, "border-muted bg-background text-muted-foreground");
-                    textClasses = cn(textClasses, "text-muted-foreground");
-                }
-
-                return `
-                    <div class="flex items-center">
-                        <div class="flex flex-col items-center">
-                            <div class="${indicatorClasses}">
-                                ${isCompleted ? '<i data-lucide="check" class="h-5 w-5"></i>' : `<span>${step.id}</span>`}
-                            </div>
-                            <span class="${textClasses}">${step.label}</span>
+            STEPS.forEach((step, index) => {
+                const isActive = index === window.appState.currentStep;
+                const isCompleted = index < window.appState.currentStep;
+                
+                stepsHtml += `
+                    <div class="flex flex-col items-center gap-2 bg-background px-2">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 
+                            ${isActive ? 'border-primary bg-primary text-primary-foreground scale-110 shadow-md' : 
+                              isCompleted ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30 text-muted-foreground bg-background'}">
+                            ${isCompleted ? '<i data-lucide="check" class="w-4 h-4"></i>' : `<span class="text-xs font-bold">${index + 1}</span>`}
                         </div>
-                        ${index < STEPS.length - 1 ? `<div class="${connectorClasses}"></div>` : ''}
+                        <span class="text-xs font-medium ${isActive ? 'text-primary' : isCompleted ? 'text-foreground' : 'text-muted-foreground'}">${step.label}</span>
                     </div>
                 `;
-            }).join('');
-
-            stepperDiv.innerHTML = `
-                <div class="flex items-center justify-center">${stepsHtml}</div>
-            `;
-            return stepperDiv;
+            });
+            stepsHtml += '</div>';
+            
+            container.innerHTML = stepsHtml;
+            return container;
         }
-        
-        /** Renders the Step 1: Problem Statement Input */
-        function renderProblemStep() {
-            const { problemStatement, selectedCategories } = window.appState;
-            const stepDiv = document.createElement('div');
-            stepDiv.className = 'max-w-3xl mx-auto space-y-8';
-            stepDiv.innerHTML = `
-                <h1 class="text-3xl font-bold text-center mb-8">1. State Your Problem</h1>
-                <div class="bg-card border border-card-border p-6 rounded-xl space-y-4 shadow-sm">
-                    <div class="space-y-2">
-                        <label for="problem-statement" class="text-base font-semibold block">Problem Statement</label>
-                        <div class="relative">
-                            <textarea
-                                id="problem-statement"
-                                placeholder="Describe the problem or decision you're facing that needs advice/insight..."
-                                class="min-h-40 resize-none font-body flex w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >${problemStatement}</textarea>
-                            <span id="char-count" class="absolute bottom-3 right-3 text-sm text-muted-foreground">
-                                ${problemStatement.length} characters
-                            </span>
-                        </div>
-                    </div>
 
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium block">Category (Optional)</label>
-                        <div id="category-badges" class="flex flex-wrap gap-2">
-                            ${PROBLEM_CATEGORIES.map(cat => `
-                                <button
-                                    data-value="${cat.value}"
-                                    class="inline-flex items-center rounded-full border px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
-                                    ${selectedCategories.includes(cat.value) 
-                                        ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
-                                        : 'border-border bg-background text-foreground hover:bg-muted'}
-                                    hover-elevate active-elevate-2"
+        function renderProblemStep() {
+            const container = document.createElement('div');
+            container.className = 'space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500';
+            
+            container.innerHTML = `
+                <div class="text-center space-y-2 mb-8">
+                    <h2 class="text-3xl font-bold tracking-tight">Define the Problem</h2>
+                    <p class="text-muted-foreground">Describe the situation, decision, or challenge you are facing.</p>
+                </div>
+                
+                <div class="bg-card border border-border rounded-xl p-6 shadow-sm">
+                    <label class="block text-sm font-medium mb-2 text-foreground">Problem Statement</label>
+                    <textarea 
+                        id="problem-input"
+                        class="w-full min-h-[150px] p-4 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus:border-primary transition-colors resize-y"
+                        placeholder="E.g., Our company is considering expanding into the Asian market, but we are unsure about the regulatory landscape and local competition..."
+                    >${window.appState.problemStatement}</textarea>
+                    <p class="text-xs text-muted-foreground mt-2 text-right">Be specific for better results.</p>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-foreground">Category (Optional)</label>
+                    <div class="flex flex-wrap gap-2">
+                        ${PROBLEM_CATEGORIES.map(cat => {
+                            const isSelected = window.appState.selectedCategories.includes(cat.value);
+                            return `
+                                <button 
                                     onclick="toggleCategory('${cat.value}')"
+                                    class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 
+                                    ${isSelected ? 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80' : 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 bg-muted text-muted-foreground hover:bg-muted/80'}"
                                 >
                                     ${cat.label}
                                 </button>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // Attach event listeners
-            stepDiv.querySelector('#problem-statement').addEventListener('input', (e) => {
-                const newValue = e.target.value;
-                document.getElementById('char-count').textContent = `${newValue.length} characters`;
-                window.appState.problemStatement = newValue;
-            });
-            
-            return stepDiv;
-        }
-        
-        function toggleCategory(categoryValue) {
-            const { selectedCategories } = window.appState;
-            let newCategories;
-            if (selectedCategories.includes(categoryValue)) {
-                newCategories = selectedCategories.filter(c => c !== categoryValue);
-            } else {
-                newCategories = [...selectedCategories, categoryValue];
-            }
-            updateStateAndRender({ selectedCategories: newCategories });
-        }
-
-        /** Renders the Step 2: Assumption Editor */
-        function renderAssumptionStep() {
-            const { assumptions } = window.appState;
-            const stepDiv = document.createElement('div');
-            stepDiv.className = 'max-w-3xl mx-auto space-y-8';
-            stepDiv.innerHTML = `
-                <h1 class="text-3xl font-bold text-center mb-8">2. List Your Assumptions</h1>
-                <div class="bg-card border border-card-border p-6 rounded-xl space-y-4 shadow-sm">
-                    <div>
-                        <label class="text-base font-semibold block">Assumptions</label>
-                        <p class="mt-1 text-sm text-muted-foreground font-body">
-                            List any beliefs or constraints that should be considered to make a good decision/better insight.
-                        </p>
-                    </div>
-
-                    <div id="assumption-list" class="space-y-3">
-                        ${assumptions.map(a => `
-                            <div class="flex items-center justify-between gap-3 p-4 rounded-lg border border-card-border bg-background shadow-sm hover:shadow-md transition-shadow">
-                                <p class="flex-1 font-body">${a.text}</p>
-                                <button
-                                    class="h-8 w-8 inline-flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover-elevate active-elevate-2 transition-colors"
-                                    onclick="removeAssumption('${a.id}')"
-                                >
-                                    <i data-lucide="x" class="h-4 w-4"></i>
-                                </button>
-                            </div>
-                        `).join('')}
-                    </div>
-
-                    <div class="flex gap-2 pt-2">
-                        <input
-                            id="new-assumption-input"
-                            type="text"
-                            placeholder="Add a good assumption (e.g., 'Competitors will react')..."
-                            class="font-body flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                        />
-                        <button
-                            id="add-assumption-button"
-                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 hover-elevate active-elevate-2 gap-2 disabled:opacity-50"
-                            onclick="addAssumption()"
-                            disabled
-                        >
-                            <i data-lucide="plus" class="h-4 w-4"></i>
-                            Add
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            // Attach event listeners
-            const input = stepDiv.querySelector('#new-assumption-input');
-            const button = stepDiv.querySelector('#add-assumption-button');
-
-            const handleInput = () => {
-                button.disabled = !input.value.trim();
-            };
-
-            input.addEventListener('input', handleInput);
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !button.disabled) {
-                    addAssumption();
-                    e.preventDefault();
-                }
-            });
-
-            return stepDiv;
-        }
-
-        function addAssumption() {
-            const input = document.getElementById('new-assumption-input');
-            const newAssumptionText = input.value.trim();
-            if (newAssumptionText) {
-                const newAssumptions = [
-                    ...window.appState.assumptions,
-                    { id: generateUUID(), text: newAssumptionText }
-                ];
-                updateStateAndRender({ assumptions: newAssumptions });
-                input.value = "";
-            }
-        }
-
-        function removeAssumption(id) {
-            const newAssumptions = window.appState.assumptions.filter(a => a.id !== id);
-            updateStateAndRender({ assumptions: newAssumptions });
-        }
-
-
-        /** Renders the Step 3: Framework Selector */
-        function renderFrameworkStep() {
-            const { selectedFrameworks } = window.appState;
-            const stepDiv = document.createElement('div');
-            stepDiv.className = 'max-w-4xl mx-auto space-y-8';
-            stepDiv.innerHTML = `
-                <h1 class="text-3xl font-bold text-center mb-8">3. Select Your Frameworks</h1>
-                <div class="bg-card border border-card-border p-6 rounded-xl space-y-6 shadow-sm">
-                    <div>
-                        <label class="text-base font-semibold block">Analysis Frameworks</label>
-                        <p class="mt-1 text-sm text-muted-foreground font-body">
-                            Choose the methodology you want the AI to use.
-                        </p>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${FRAMEWORKS.map(framework => {
-                            const isSelected = selectedFrameworks.includes(framework.id);
-                            const cardClasses = cn(
-                                "cursor-pointer p-4 transition-all hover-elevate active-elevate-2 rounded-xl border border-card-border",
-                                isSelected && "border-primary ring-2 ring-primary/20 bg-primary/10"
-                            );
-                            const iconBgClasses = cn(
-                                "rounded-lg p-2 flex-shrink-0",
-                                isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                            );
-                            
-                            // Use Target icon as a generic placeholder since we only have Lucide
-                            return `
-                                <div 
-                                    class="${cardClasses}"
-                                    onclick="toggleFramework('${framework.id}')"
-                                >
-                                    <div class="flex items-start gap-3">
-                                        <div class="${iconBgClasses}">
-                                            <i data-lucide="target" class="h-4 w-4"></i>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <h3 class="font-semibold mb-1 text-sm">${framework.name}</h3>
-                                            <p class="text-xs text-muted-foreground font-body line-clamp-2">
-                                                ${framework.description}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
                             `;
                         }).join('')}
                     </div>
                 </div>
             `;
-            return stepDiv;
-        }
-
-        function toggleFramework(frameworkId) {
-            const { selectedFrameworks } = window.appState;
-            let newFrameworks;
-            if (selectedFrameworks.includes(frameworkId)) {
-                newFrameworks = selectedFrameworks.filter(id => id !== frameworkId);
-            } else {
-                newFrameworks = [...selectedFrameworks, frameworkId];
-            }
-            updateStateAndRender({ selectedFrameworks: newFrameworks });
-        }
-        
-        /** Renders the Step 4: Analysis Results */
-        function renderResultsStep() {
-            const { analysisResults, isLoading, progress } = window.appState;
-            const stepDiv = document.createElement('div');
-            stepDiv.className = 'max-w-5xl mx-auto space-y-8';
-            stepDiv.innerHTML = `
-                <h1 class="text-3xl font-bold text-center mb-8">4. Here are your Results</h1>
-                <p class="text-center text-lg text-red-600 font-semibold">
-                    Disclaimer: These are decisions but they are generated by an LLM (it may make mistakes).
-                </p>
-            `;
             
-            // Problem/Assumption Summary
-            stepDiv.appendChild(renderSummaryCard());
-
-            if (isLoading) {
-                stepDiv.appendChild(renderLoadingState());
-            } else {
-                analysisResults.forEach(result => {
-                    stepDiv.appendChild(renderAnalysisCard(result));
+            // Attach event listener manually after innerHTML to avoid losing cursor focus on re-render logic if we were fully reactive
+            // But here we just update global state on change
+            setTimeout(() => {
+                const textarea = document.getElementById('problem-input');
+                textarea.addEventListener('input', (e) => {
+                    window.appState.problemStatement = e.target.value;
                 });
-                if (analysisResults.length > 0) {
-                     // Add export all button placeholder
-                     const exportAll = document.createElement('div');
-                     exportAll.className = 'flex justify-center mt-10';
-                     exportAll.innerHTML = `
-                        <button 
-                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-red-600 text-primary-foreground hover:bg-red-700 hover-elevate active-elevate-2 gap-2"
-                            onclick="handleExportAll()"
-                        >
-                            <i data-lucide="download" class="h-4 w-4"></i>
-                            Export Insights/Decisions
-                        </button>
-                     `;
-                     stepDiv.appendChild(exportAll);
-                }
+                textarea.focus();
+            }, 0);
+
+            return container;
+        }
+
+        function toggleCategory(catValue) {
+            const current = window.appState.selectedCategories;
+            if (current.includes(catValue)) {
+                updateStateAndRender({ selectedCategories: current.filter(c => c !== catValue) });
+            } else {
+                updateStateAndRender({ selectedCategories: [...current, catValue] });
             }
-
-            return stepDiv;
         }
 
-        function renderLoadingState() {
-            const { currentFramework, progress } = window.appState;
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'bg-card border border-card-border p-8 rounded-xl shadow-lg space-y-6 text-center';
-            loadingDiv.innerHTML = `
-                <i data-lucide="brain" class="h-10 w-10 mx-auto text-primary animate-pulse"></i>
-                <h3 class="text-xl font-semibold">
-                    <span class="text-red-500">DAID</span> is Actively Analyzing the information...
-                </h3>
-                <p class="text-muted-foreground">
-                    Generating catastrophically bad advice for: 
-                    <span class="font-medium text-foreground">${currentFramework || 'Frameworks'}</span>
-                </p>
-                <div class="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div class="h-full bg-primary transition-all duration-500 ease-out" style="width: ${progress}%"></div>
-                </div>
-                <p class="text-sm font-medium text-muted-foreground">${Math.round(progress)}% Complete</p>
-            `;
-            return loadingDiv;
-        }
-        
-        function renderAnalysisCard(analysis) {
-            const card = document.createElement('div');
-            card.className = 'bg-background border border-border p-6 rounded-xl space-y-6 shadow-md';
-            card.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="rounded-lg p-2 bg-primary/10 text-primary">
-                            <i data-lucide="target" class="h-5 w-5"></i>
-                        </div>
-                        <h2 class="text-xl font-bold">${analysis.frameworkName}</h2>
-                    </div>
-                    <button 
-                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-8 px-3 py-1 bg-muted text-muted-foreground hover:bg-muted-foreground hover:text-primary-foreground hover-elevate active-elevate-2 gap-2"
-                        onclick="handleExport('${analysis.frameworkName}')"
-                    >
-                        <i data-lucide="download" class="h-4 w-4"></i>
-                        Export
-                    </button>
+        function renderAssumptionStep() {
+            const container = document.createElement('div');
+            container.className = 'space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500';
+            
+            container.innerHTML = `
+                <div class="text-center space-y-2 mb-8">
+                    <h2 class="text-3xl font-bold tracking-tight">List Assumptions</h2>
+                    <p class="text-muted-foreground">What do you believe to be true about this problem? Validating these is key to a good analysis.</p>
                 </div>
                 
-                <div class="space-y-6">
-                    ${analysis.sections.map(section => `
-                        <div>
-                            <h3 class="mb-3 text-lg font-semibold text-foreground">${section.title}</h3>
-                            <ul class="space-y-2 font-body leading-relaxed">
-                                ${section.insights.map(insight => `
-                                    <li class="flex gap-3">
-                                        <span class="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-500"></span>
-                                        <span class="text-foreground">${insight}</span>
-                                    </li>
+                <div class="flex gap-2">
+                    <input 
+                        id="assumption-input"
+                        type="text" 
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:border-primary transition-all"
+                        placeholder="E.g., We have enough budget for Q3..."
+                        onkeydown="if(event.key === 'Enter') addAssumption()"
+                    />
+                    <button 
+                        onclick="addAssumption()"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 hover-elevate"
+                    >
+                        Add
+                    </button>
+                </div>
+
+                <div class="space-y-3 mt-4">
+                    ${window.appState.assumptions.length === 0 
+                        ? '<div class="text-center py-12 border-2 border-dashed rounded-lg text-muted-foreground bg-muted/30">No assumptions listed yet.</div>' 
+                        : '<ul class="space-y-2">' + window.appState.assumptions.map(a => `
+                            <li class="flex items-center justify-between p-3 bg-card border rounded-md shadow-sm group">
+                                <span class="text-sm">${a.text}</span>
+                                <button onclick="removeAssumption('${a.id}')" class="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </li>
+                        `).join('') + '</ul>'
+                    }
+                </div>
+            `;
+            
+            setTimeout(() => document.getElementById('assumption-input').focus(), 0);
+
+            return container;
+        }
+
+        function addAssumption() {
+            const input = document.getElementById('assumption-input');
+            const text = input.value.trim();
+            if (text) {
+                const newAssumption = { id: generateUUID(), text };
+                updateStateAndRender({ assumptions: [...window.appState.assumptions, newAssumption] });
+            }
+        }
+
+        function removeAssumption(id) {
+            updateStateAndRender({ assumptions: window.appState.assumptions.filter(a => a.id !== id) });
+        }
+
+        // --- UPDATED FRAMEWORK SELECTION LOGIC ---
+        function renderFrameworkStep() {
+            const container = document.createElement('div');
+            container.className = 'space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500 pb-20';
+            
+            // Header
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'text-center space-y-2 mb-8';
+            headerDiv.innerHTML = `
+                <h2 class="text-3xl font-bold tracking-tight">Select Frameworks</h2>
+                <p class="text-muted-foreground">Choose how you want DAID to analyze your problem.</p>
+            `;
+            container.appendChild(headerDiv);
+
+            const mode = window.appState.frameworkSelectionMode;
+            const selectedIds = window.appState.selectedFrameworks;
+
+            // --- CARD 1: Auto Selection ---
+            const autoCard = document.createElement('div');
+            const isAuto = mode === 'auto';
+            autoCard.className = `border-2 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer group
+                ${isAuto ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-md' : 'border-border bg-card hover:border-primary/50'}`;
+            
+            autoCard.onclick = () => {
+                if (mode !== 'auto') {
+                    updateStateAndRender({ frameworkSelectionMode: 'auto', selectedFrameworks: [] });
+                }
+            };
+
+            let autoContent = `
+                <div class="p-5 flex items-center gap-4">
+                    <div class="p-3 rounded-full ${isAuto ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}">
+                        <i data-lucide="bot" class="w-6 h-6"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold ${isAuto ? 'text-primary' : 'text-foreground'}">Let DAID choose the right framework for you</h3>
+                        <p class="text-sm text-muted-foreground">Automated recommendation based on your problem statement.</p>
+                    </div>
+                    <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center ${isAuto ? 'border-primary bg-primary' : 'border-muted-foreground/30'}">
+                        ${isAuto ? '<div class="w-2.5 h-2.5 bg-background rounded-full"></div>' : ''}
+                    </div>
+                </div>
+            `;
+
+            if (isAuto) {
+                autoContent += `
+                    <div class="px-5 pb-6 pl-[4.5rem] pr-4 animate-in slide-in-from-top-2 fade-in duration-300">
+   
+                        
+                        ${selectedIds.length > 0 ? `
+                            <div class="mt-4 pt-4 border-t border-primary/10">
+                                <span class="text-xs font-semibold text-primary uppercase tracking-wider">Selected by DAID</span>
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                    ${selectedIds.map(id => {
+                                        const f = FRAMEWORKS.find(x => x.id === id);
+                                        return `<span class="inline-flex items-center rounded-full border border-transparent bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20">${f ? f.name : id}</span>`;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            autoCard.innerHTML = autoContent;
+            container.appendChild(autoCard);
+
+            // Bind click for the button inside Auto card (needs to stop propagation)
+            if (isAuto) {
+                setTimeout(() => {
+                    const btn = document.getElementById('run-auto-btn');
+                    if (btn) {
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            // Logic: Lock to auto (already is), select top 4 frameworks
+                            const top4 = FRAMEWORKS.slice(0, 4).map(f => f.id);
+                            updateStateAndRender({ selectedFrameworks: top4 });
+                            showToast("DAID has selected recommended frameworks.");
+                        };
+                    }
+                }, 0);
+            }
+
+            // --- CARD 2: Manual Selection ---
+            const manualCard = document.createElement('div');
+            const isManual = mode === 'manual';
+            manualCard.className = `border-2 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer
+                ${isManual ? 'border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500 shadow-md' : 'border-border bg-card hover:border-indigo-300/50'}`;
+            
+            manualCard.onclick = () => {
+                if (mode !== 'manual') {
+                    updateStateAndRender({ frameworkSelectionMode: 'manual', selectedFrameworks: [] });
+                }
+            };
+
+            let manualContent = `
+                <div class="p-5 flex items-center gap-4">
+                    <div class="p-3 rounded-full ${isManual ? 'bg-indigo-100 text-indigo-600' : 'bg-muted text-muted-foreground'}">
+                        <i data-lucide="layout-grid" class="w-6 h-6"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold ${isManual ? 'text-indigo-900' : 'text-foreground'}">Analysis Frameworks (Manual Selection)</h3>
+                        <p class="text-sm text-muted-foreground">Browse and select specific frameworks yourself.</p>
+                    </div>
+                    <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center ${isManual ? 'border-indigo-500 bg-indigo-500' : 'border-muted-foreground/30'}">
+                        ${isManual ? '<div class="w-2.5 h-2.5 bg-background rounded-full"></div>' : ''}
+                    </div>
+                </div>
+            `;
+
+            if (isManual) {
+                manualContent += `
+                    <div class="px-5 pb-6 animate-in slide-in-from-top-2 fade-in duration-300">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            ${FRAMEWORKS.map(fw => {
+                                const isSelected = selectedIds.includes(fw.id);
+                                return `
+                                    <div 
+                                        id="fw-tile-${fw.id}"
+                                        class="p-3 rounded-lg border text-left transition-all cursor-pointer relative group
+                                            ${isSelected 
+                                                ? 'border-indigo-500 bg-background shadow-sm ring-1 ring-indigo-500' 
+                                                : 'border-border bg-background hover:border-indigo-300 hover:shadow-sm'}"
+                                    >
+                                        <div class="flex justify-between items-start">
+                                            <span class="font-medium text-sm ${isSelected ? 'text-indigo-700' : 'text-foreground'}">${fw.name}</span>
+                                            ${isSelected ? '<div class="bg-indigo-500 rounded-full p-0.5 text-white"><i data-lucide="check" class="w-3 h-3"></i></div>' : ''}
+                                        </div>
+                                        <p class="text-xs text-muted-foreground mt-1 line-clamp-2">${fw.description}</p>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="mt-3 text-right text-xs text-muted-foreground">
+                            ${selectedIds.length} selected
+                        </div>
+                    </div>
+                `;
+            }
+            manualCard.innerHTML = manualContent;
+            container.appendChild(manualCard);
+
+            // Bind clicks for grid items
+            if (isManual) {
+                setTimeout(() => {
+                    FRAMEWORKS.forEach(fw => {
+                        const tile = document.getElementById(`fw-tile-${fw.id}`);
+                        if (tile) {
+                            tile.onclick = (e) => {
+                                e.stopPropagation();
+                                toggleFramework(fw.id);
+                            };
+                        }
+                    });
+                }, 0);
+            }
+
+            return container;
+        }
+
+        function toggleFramework(id) {
+            // Ensure manual mode (redundant if grid is shown, but per requirement)
+            const currentMode = window.appState.frameworkSelectionMode;
+            let newMode = currentMode;
+            if (currentMode !== 'manual') {
+                newMode = 'manual';
+            }
+
+            const current = window.appState.selectedFrameworks;
+            let newSelection;
+            if (current.includes(id)) {
+                newSelection = current.filter(fid => fid !== id);
+            } else {
+                newSelection = [...current, id];
+            }
+
+            updateStateAndRender({ 
+                frameworkSelectionMode: newMode, 
+                selectedFrameworks: newSelection 
+            });
+        }
+
+        function renderResultsStep() {
+            const container = document.createElement('div');
+            container.className = 'space-y-8 animate-in slide-in-from-bottom-4 fade-in duration-500 pb-20';
+
+            container.innerHTML = `
+                <div class="text-center space-y-2 mb-8">
+                    <h2 class="text-3xl font-bold tracking-tight">Analysis Results</h2>
+                    <p class="text-muted-foreground">Here are the insights generated for your problem.</p>
+                </div>
+                
+                <div class="grid grid-cols-1 gap-8">
+                    ${window.appState.analysisResults.map(res => `
+                        <div class="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                            <div class="bg-muted/50 px-6 py-4 border-b border-border flex items-center justify-between">
+                                <h3 class="font-semibold text-lg flex items-center gap-2">
+                                    <div class="p-1.5 bg-primary/10 rounded text-primary">
+                                        <i data-lucide="layers" class="w-5 h-5"></i>
+                                    </div>
+                                    ${res.frameworkName}
+                                </h3>
+                            </div>
+                            <div class="p-6 space-y-6">
+                                ${res.sections.map(sec => `
+                                    <div class="space-y-2">
+                                        <h4 class="font-medium text-foreground flex items-center gap-2">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                            ${sec.title}
+                                        </h4>
+                                        <ul class="space-y-2 pl-4">
+                                            ${sec.insights.map(insight => `
+                                                <li class="text-sm text-muted-foreground leading-relaxed list-disc marker:text-muted-foreground/50">
+                                                    ${insight}
+                                                </li>
+                                            `).join('')}
+                                        </ul>
+                                    </div>
                                 `).join('')}
-                            </ul>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
-            `;
-            return card;
-        }
 
-        function renderSummaryCard() {
-            const { problemStatement, assumptions } = window.appState;
-            
-            const card = document.createElement('div');
-            card.className = 'bg-card border border-card-border p-6 rounded-xl space-y-4 shadow-sm';
-
-            card.innerHTML = `
-                <div class="space-y-4">
-                    <div class="border-b pb-4">
-                        <h3 class="text-lg font-semibold mb-1">Problem Statement</h3>
-                        <p class="font-body text-muted-foreground">${problemStatement}</p>
-                    </div>
-
-                    <div>
-                        <h3 class="text-lg font-semibold mb-3">Assumptions (${assumptions.length})</h3>
-                        <ul class="space-y-1 font-body text-muted-foreground list-disc pl-5">
-                            ${assumptions.map(a => `<li>${a.text}</li>`).join('')}
-                        </ul>
-                    </div>
+                <div class="flex justify-center mt-12">
+                    <button onclick="handleNewAnalysis()" class="text-sm text-muted-foreground hover:text-primary underline underline-offset-4 transition-colors">
+                        Start Over
+                    </button>
                 </div>
             `;
-            return card;
+
+            return container;
         }
 
-        // --- 5. RESULTS GENERATION LOGIC ---
-
-        async function generateAllAnalyses() {
-            const { selectedFrameworks } = window.appState;
-            const totalFrameworks = selectedFrameworks.length;
-            let results = [];
-
-            for (let i = 0; i < totalFrameworks; i++) {
-                const frameworkId = selectedFrameworks[i];
-                const framework = FRAMEWORKS.find(f => f.id === frameworkId);
-
-                // Update UI for loading status
-                updateStateAndRender({
-                    currentFramework: framework.name,
-                    progress: (i / totalFrameworks) * 100,
-                });
-
-                try {
-                    const result = await fetchBadAnalysis(frameworkId);
-                    results.push(result);
-                    
-                    // Update final result state after each successful call
-                    updateStateAndRender({
-                        analysisResults: [...results],
-                        progress: ((i + 1) / totalFrameworks) * 100,
-                    });
-                } catch (e) {
-                    console.error(`Failed to generate analysis for ${framework.name}`, e);
-                    // Continue to next framework even if one fails
-                }
-            }
-
-            // Final state update
-            updateStateAndRender({
-                isLoading: false,
-                currentFramework: null,
-                progress: 100,
+        function renderLoading() {
+            return Object.assign(document.createElement('div'), {
+                className: 'flex flex-col items-center justify-center h-64 space-y-4',
+                innerHTML: `
+                    <div class="relative w-16 h-16">
+                        <div class="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+                        <div class="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+                    </div>
+                    <div class="text-center space-y-1">
+                        <p class="font-medium text-lg">Analyzing...</p>
+                        <p class="text-sm text-muted-foreground">Applying ${window.appState.currentFramework || 'framework'} logic</p>
+                    </div>
+                    <div class="w-64 h-2 bg-muted rounded-full overflow-hidden mt-4">
+                        <div class="h-full bg-primary transition-all duration-300 ease-out" style="width: ${window.appState.progress}%"></div>
+                    </div>
+                `
             });
-            showToast("All analysis completed!", 'success');
         }
 
-        // --- 6. NAVIGATION BUTTONS & EXPORT ---
-        
         function renderNavigationButtons() {
-            const { currentStep } = window.appState;
-            const isLastStep = currentStep === STEPS.length - 1;
-
-            const navDiv = document.createElement('div');
-            navDiv.className = 'fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background shadow-lg';
-            navDiv.innerHTML = `
-                <div class="mx-auto max-w-7xl px-6 py-4 flex justify-between">
-                    <button
-                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 border border-border bg-background text-foreground hover:bg-muted hover-elevate active-elevate-2 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onclick="handleBack()"
-                        ${currentStep === 0 ? 'disabled' : ''}
-                    >
-                        <i data-lucide="arrow-left" class="h-4 w-4"></i>
-                        Back
-                    </button>
-                    <button
-                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 hover-elevate active-elevate-2 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onclick="handleNext()"
-                    >
-                        ${isLastStep ? '<i data-lucide="brain" class="h-4 w-4"></i>Analyze' : '<i data-lucide="arrow-right" class="h-4 w-4"></i>Next'}
-                    </button>
-                </div>
-            `;
-            return navDiv;
-        }
-
-        function handleExport(frameworkName) {
-            const analysis = window.appState.analysisResults.find(a => a.frameworkName === frameworkName);
-            if (!analysis) return;
-
-            const textContent = formatAnalysisForExport(analysis, frameworkName);
-            const filename = `DAID_Great_Advice_${frameworkName.replace(/\s/g, '_')}.txt`;
-            downloadTextFile(textContent, filename);
-            showToast(`Exported LLM driven analysis for ${frameworkName}!`, 'success');
-        }
-
-        function handleExportAll() {
-            const allAnalyses = window.appState.analysisResults;
-            if (allAnalyses.length === 0) return;
-
-            let fullContent = `DAID - Decision & Action Intelligence Designer: Complete Report\n`;
-            fullContent += `--------------------------------------------------------------------------\n\n`;
+            const container = document.createElement('div');
+            container.className = 'fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur border-t border-border flex justify-between items-center max-w-5xl mx-auto w-full z-40';
             
-            fullContent += `Problem Statement: ${window.appState.problemStatement}\n`;
-            fullContent += `Assumptions:\n - ${window.appState.assumptions.map(a => a.text).join('\n - ')}\n\n`;
-
-            allAnalyses.forEach((analysis, index) => {
-                fullContent += formatAnalysisForExport(analysis, analysis.frameworkName, false);
-                if (index < allAnalyses.length - 1) fullContent += `\n\n==================================================\n\n`;
-            });
-
-            const filename = `DAID_All_Decisions_Report.txt`;
-            downloadTextFile(fullContent, filename);
-            showToast("Exported all analyses in one file!", 'success');
+            const isFirstStep = window.appState.currentStep === 0;
+            
+            container.innerHTML = `
+                <button 
+                    onclick="handleBack()" 
+                    class="px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-muted text-foreground ${isFirstStep ? 'invisible' : ''}"
+                >
+                    Back
+                </button>
+                
+                <button 
+                    onclick="handleNext()" 
+                    class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-8 shadow-lg hover:shadow-primary/25"
+                >
+                    ${window.appState.currentStep === 2 ? 'Generate Analysis' : 'Next Step'}
+                    <i data-lucide="arrow-right" class="ml-2 w-4 h-4"></i>
+                </button>
+            `;
+            return container;
+        }
+        
+        function renderNotFound() {
+            const div = document.createElement('div');
+            div.innerHTML = `<div class="text-center py-12 text-muted-foreground">Step content not found.</div>`;
+            return div;
         }
 
-        function formatAnalysisForExport(analysis, frameworkName, includeSummary = true) {
-            let text = '';
-            text += `[FRAMEWORK: ${frameworkName}]\n`;
-            if (includeSummary) {
-                 text += `Problem: ${window.appState.problemStatement}\n`;
-                 text += `Assumptions: ${window.appState.assumptions.map(a => a.text).join('; ')}\n`;
-                 text += `\n`;
-            }
-
-            analysis.sections.forEach(section => {
-                text += `\n--- ${section.title.toUpperCase()} ---\n`;
-                section.insights.forEach(insight => {
-                    text += `- ${insight}\n`;
-                });
-            });
-            return text;
-        }
-
-        function downloadTextFile(text, filename) {
-            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        // --- 7. INITIALIZATION ---
-
-        function initApp() {
-            // Check for Firebase initialization utility and run it
-            if (window.initFirebase) {
-                window.initFirebase();
-            } else {
-                console.error("Firebase initialization function not found. Did the import fail?");
-            }
-
-            render();
-        }
-
-        // Attach to window load to ensure all scripts are ready
-        window.addEventListener('load', initApp);
+        // Initial Render
+        render();
 
     </script>
 </body>
