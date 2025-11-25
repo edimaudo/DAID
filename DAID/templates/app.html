@@ -415,27 +415,22 @@
 
 // Function to collect data from form fields (you must implement this based on your steps 0 and 1)
 function collectAllData() {
-    // This is a placeholder. You need to gather all user input here.
-    const step0Data = document.getElementById('step-0-input').value; 
-    const step1Data = document.getElementById('step-1-input').value; 
-    return `User input from Step 0: ${step0Data}. User input from Step 1: ${step1Data}.`;
+    // PULL DATA DIRECTLY FROM STATE (the correct fix)
+    const problem = window.appState.problemStatement;
+    const assumptions = window.appState.assumptions.map(a => a.text).join('; ');
+    const selectedFrameworks = window.appState.selectedFrameworks.length > 0
+        ? 'Using selected frameworks: ' + window.appState.selectedFrameworks.map(id => FRAMEWORKS.find(f => f.id === id)?.name || id).join(', ')
+        : 'Using DAID auto-selected frameworks.';
+    
+    // Construct the query for the server
+    return `
+        Problem Statement: ${problem}. 
+        Assumptions: ${assumptions}. 
+        Framework Context: ${selectedFrameworks}
+    `.trim();
 }
 
-// Function to display the final analysis (you must implement this for step 3)
-function displayAnalysis(analysisObject) {
-    // This is a placeholder. Update the UI to show the results.
-    const content = document.getElementById('app-content');
-    content.innerHTML = `
-        <h2 class="text-2xl font-bold mb-4">${analysisObject.title}</h2>
-        <ul class="list-disc list-inside space-y-2">
-            ${analysisObject.findings.map(f => `<li>${f}</li>`).join('')}
-        </ul>
-    `;
-}
-
-        
-        
-        async function handleNext() {
+async function handleNext() {
     const currentStep = window.appState.currentStep;
     
     if (currentStep === 0 && !window.appState.problemStatement.trim()) {
@@ -450,12 +445,12 @@ function displayAnalysis(analysisObject) {
     }
 
     if (currentStep === 2) {
-        // await generateAllAnalyses(); // <--- THIS LINE IS REPLACED BY THE API CALL LOGIC BELOW
-
-        const userQuery = collectAllData(); // You must define this function to gather input
+        // --- API CALL LOGIC STARTS HERE ---
+        const userQuery = collectAllData(); 
         
-        // Add a loading indicator/disable button (assuming showLoader is available)
-        // showLoader(true); 
+        // 1. Show loading state immediately
+        // We use updateStateAndRender to show the spinner (renderLoading())
+        updateStateAndRender({ isLoading: true, progress: 50, analysisResults: [], currentFramework: 'Calling Gemini API...' }); 
 
         try {
             const response = await fetch('/api/generate_analysis', {
@@ -471,24 +466,39 @@ function displayAnalysis(analysisObject) {
             const serverData = await response.json(); 
 
             if (serverData.success) {
-                // HE FIX IS HERE: 
-                // We access the OBJECT directly from 'analysisData'.
-                // This replaces the old, failing attempt: JSON.parse(serverData.analysisText)
+                // The object from app.py is now: { analysisTitle: '...', keyFindings: [...] }
                 const structuredAnalysis = serverData.analysisData; 
-
-                // Use the structured object to display the results
-                displayAnalysis(structuredAnalysis); // You must define this function to update the UI
-                goToStep(currentStep + 1); 
+                
+                // 2. CONVERT to the complex format expected by renderResultsStep()
+                const newAnalysisResult = {
+                    // Use a default framework name since our new API call doesn't specify one
+                    framework_name: structuredAnalysis.analysisTitle || "Custom Strategic Analysis",
+                    why_selected: "Analysis generated via the streamlined server endpoint. The analysis Title and Findings are structured directly from the AI.",
+                    decision: structuredAnalysis.keyFindings[0] || "Review the key findings for the core decision.",
+                    sections: [{
+                        title: "Key Findings & Action Items",
+                        insights: structuredAnalysis.keyFindings
+                    }]
+                };
+                
+                // 3. Update state, hide loading, and move to step 3
+                updateStateAndRender({
+                    isLoading: false, 
+                    analysisResults: [newAnalysisResult], // Must be an array
+                    currentStep: 3,
+                    currentFramework: null
+                }); 
             } else {
                 showToast(`Analysis Failed: ${serverData.error}`, 'error');
+                updateStateAndRender({ isLoading: false }); 
             }
         } catch (error) {
             console.error('Analysis Error:', error);
             showToast(`An error occurred during analysis: ${error.message}`, 'error');
-        } finally {
-            // Hide the loading indicator
-            // showLoader(false);
+            updateStateAndRender({ isLoading: false }); // Ensure loader is hidden on error
         }
+        
+        return; // Important to stop synchronous flow while waiting for async results
     } else {
         goToStep(currentStep + 1);
     }
