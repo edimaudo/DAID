@@ -5,14 +5,14 @@ from google import genai
 from google.generativeai.errors import APIError
 
 # --- Application Initialization ---
+# The Flask object MUST be named 'app' for Vercel to find the entry point.
 app = Flask(__name__)
 
-# Load API Key securely from environment variables (MANDATORY for Vercel)
-# The key is only accessed here on the server side, keeping it secure.
-# Vercel reads this from your deployment settings. Locally, it reads from the .env file.
+# Load API Key securely from environment variables (Vercel provides this)
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 if not GEMINI_API_KEY:
+    # This warning is for local testing. In Vercel, this will trigger the 500 response.
     print("WARNING: GEMINI_API_KEY environment variable not set. API routes will fail.")
 
 # --- Routes ---
@@ -31,7 +31,6 @@ def main_app():
 
 
 # 3. Secure Gemini API Endpoint
-# Handles the request for AI analysis sent from the client-side JavaScript in app.html.
 @app.route('/api/generate_analysis', methods=['POST'])
 def generate_analysis():
     """
@@ -51,47 +50,20 @@ def generate_analysis():
 
         # --- Gemini API Call Setup ---
         
-        # System instruction to define the model's persona and output format
         system_instruction = (
-             """
-                You are the Decision & Action Intelligence Designer (DAID), an AI dedicated to providing the best strategic advice possible. 
-            
-            Your goal is to ensure the user makes a smart decision based on their Problem Statement and Assumptions.
-            
-            You will be provided with:
-            1. A Problem Statement.
-            2. A list of Assumptions.
-            3. A specific Framework to apply (OR you will be asked to select the best ones).
-
-            Format the output STRICTLY as a JSON object with the following structure:
-            {
-              "analyses": [
-                {
-                  "framework_name": "Name of the Framework",
-                  "why_selected": "A clear explanation of why this framework is appropriate for this specific problem.",
-                  "decision": "The core decision or recommendation derived from applying this framework.",
-                  "sections": [
-                    {
-                      "title": "Section Title (e.g., Analysis, Key Factors, Risks)",
-                      "insights": [
-                        "Insight 1",
-                        "Insight 2"
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-            """
+            "You are a Data Analysis and Insight Generator (DAID). "
+            "Your goal is to provide a concise, structured, and professional analysis "
+            "based on the provided user input and collected data. "
+            "Structure your response with clear headings (e.g., Summary, Key Findings, Recommendations). "
+            "The entire output must be formatted using Markdown for clean rendering."
         )
 
-        # Full prompt combining the instruction and user data
         full_prompt = (
-            f"Please generate a detailed and logical decision analysis report based on the users input and system prompt:\n\n"
+            f"Please generate a detailed data analysis report based on the following consolidated data:\n\n"
             f"--- CONSOLIDATED USER DATA ---\n"
             f"{user_input}\n"
             f"--- END OF DATA ---\n"
-            f"Provide a professional decision analysis report formatted strictly in Markdown."
+            f"Provide a professional report formatted strictly in Markdown."
         )
 
         # Initialize the client using the secure key
@@ -113,11 +85,9 @@ def generate_analysis():
         })
 
     except APIError as e:
-        # Log and return errors from the Gemini API
         print(f"Gemini API Error: {e}")
         return jsonify({"error": f"AI generation failed due to API error: {e}", "success": False}), 500
     except Exception as e:
-        # Handle all other internal server errors
         print(f"Internal Server Error: {e}")
         return jsonify({"error": "An unexpected server error occurred during processing.", "success": False}), 500
 
@@ -125,8 +95,12 @@ def generate_analysis():
 # Vercel requirement: The entry point must be defined.
 if __name__ == '__main__':
     # When running locally, load the .env file for environment variables
-    from dotenv import load_dotenv
-    load_dotenv()
+    # This must be outside the main application scope that Vercel uses.
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        print("Note: python-dotenv not found. Install it to use .env file locally.")
     
     # Run locally for debugging
     app.run(debug=True, host='0.0.0.0', port=5000)
