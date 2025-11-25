@@ -8,12 +8,12 @@
     <title>DAID</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Load Google Fonts (Inter and IBM Plex Sans for body text) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
     <!-- Inject Flask variables into JS -->
     <script>
-        
         const __app_id = `{{ app_id }}`;
-        
     </script>
 
     <!-- Keep all original scripts/styles unchanged -->
@@ -22,25 +22,88 @@
 
 
     <style>
+        /* Custom Font Setup */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+        
+        /* Custom Color Variables (Light Mode Only for simplicity) */
         :root {
-            --background: hsl(0 0% 100%);
-            --foreground: hsl(220 13% 13%);
-            --border: hsl(220 13% 88%);
-            --card: hsl(220 13% 98%);
-            --primary: hsl(211 100% 43%);
-            --primary-foreground: hsl(0 0% 100%);
-            --muted: hsl(220 13% 96%);
-            --muted-foreground: hsl(220 13% 45%);
+            --elevate-1: rgba(0,0,0, .03);
+            --elevate-2: rgba(0,0,0, .08);
+            --background: hsl(0 0% 100%); /* White */
+            --foreground: hsl(220 13% 13%); /* Near Black */
+            --border: hsl(220 13% 88%); /* Light Gray */
+            --card: hsl(220 13% 98%); /* Off-White/Light Gray */
+            --card-foreground: hsl(220 13% 13%);
+            --card-border: hsl(220 13% 93%);
+            --primary: hsl(211 100% 43%); /* Blue */
+            --primary-foreground: hsl(0 0% 100%); /* White */
+            --muted: hsl(220 13% 96%); /* Lighter Gray */
+            --muted-foreground: hsl(220 13% 45%); /* Mid Gray */
         }
+        
+        /* Custom Elevation Classes */
+        .hover-elevate:hover:not(.no-default-hover-elevate)::after {
+            background-color: var(--elevate-1);
+        }
+        
+        .active-elevate-2:active:not(.no-default-active-elevate)::after {
+            background-color: var(--elevate-2);
+        }
+
+        .hover-elevate,
+        .active-elevate-2 {
+            position: relative;
+            z-index: 0;
+            transition: box-shadow 0.2s, background-color 0.2s;
+        }
+
+        .hover-elevate::after,
+        .active-elevate-2::after {
+            content: "";
+            pointer-events: none;
+            position: absolute;
+            inset: 0px;
+            border-radius: inherit;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .hover-elevate:hover::after {
+            opacity: 1;
+        }
+
+        .active-elevate-2:active::after {
+            opacity: 1;
+        }
+        
+        /* Font styles using custom variables */
         .font-sans { font-family: 'Inter', sans-serif; }
+        .font-body { font-family: 'IBM Plex Sans', sans-serif; }
+
+        /* Utility classes using custom variables */
         .bg-background { background-color: var(--background); }
         .text-foreground { color: var(--foreground); }
         .border-border { border-color: var(--border); }
         .bg-card { background-color: var(--card); }
+        .border-card-border { border-color: var(--card-border); }
         .text-primary { color: var(--primary); }
         .bg-primary { background-color: var(--primary); }
         .text-primary-foreground { color: var(--primary-foreground); }
+        .bg-muted { background-color: var(--muted); }
+        .text-muted-foreground { color: var(--muted-foreground); }
+        .border-primary { border-color: var(--primary); }
+        .ring-primary\/20 { --tw-ring-color: rgba(66, 133, 244, 0.2); }
+        .bg-primary\/10 { background-color: rgba(66, 133, 244, 0.1); }
+        
+        /* Transitions */
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .slide-in { animation: slideIn 0.5s ease-out; }
+        @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .transition-height { transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
     </style>
 </head>
 <body class="min-h-screen bg-background font-sans text-foreground">
