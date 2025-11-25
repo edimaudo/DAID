@@ -2,7 +2,7 @@ import os
 import json
 from flask import Flask, render_template, request, jsonify
 from google import genai
-from google.generativeai.errors import APIError
+google.genai.errors import APIError
 
 # --- Application Initialization ---
 # The Flask object MUST be named 'app' for Vercel to find the entry point.
