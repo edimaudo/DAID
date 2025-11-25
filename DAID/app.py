@@ -41,7 +41,7 @@ def generate_analysis():
         # Returning a clear error if the server is improperly configured
         return jsonify({"error": "Server configuration error: Gemini API key is missing. Please set the GEMINI_API_KEY environment variable.", "success": False}), 500
     
-   try:
+    try:
         data = request.json
         user_query = data.get('userQuery', 'No input provided.')
         
