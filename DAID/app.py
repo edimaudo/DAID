@@ -51,15 +51,15 @@ def generate_analysis():
         # --- Gemini API Call Setup ---
         
         system_instruction = (
-            "You are a Data Analysis and Insight Generator (DAID). "
-            "Your goal is to provide a concise, structured, and professional analysis "
+            "You are a Decision Intelligence and Action Designer. "
+            "Your goal is to provide a concise, structured, and professional analysis of problems using structured problem solving and decision making frameowkrs "
             "based on the provided user input and collected data. "
             "Structure your response with clear headings (e.g., Summary, Key Findings, Recommendations). "
             "The entire output must be formatted using Markdown for clean rendering."
         )
 
         full_prompt = (
-            f"Please generate a detailed data analysis report based on the following consolidated data:\n\n"
+            f"Please generate a logical report based on the following consolidated data:\n\n"
             f"--- CONSOLIDATED USER DATA ---\n"
             f"{user_input}\n"
             f"--- END OF DATA ---\n"
