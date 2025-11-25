@@ -3,6 +3,7 @@ import json
 from flask import Flask, render_template, request, jsonify
 from google import genai
 from google.genai.errors import APIError
+from google.genai import types
 
 # --- Application Initialization ---
 # The Flask object MUST be named 'app' for Vercel to find the entry point.
@@ -40,49 +41,55 @@ def generate_analysis():
         # Returning a clear error if the server is improperly configured
         return jsonify({"error": "Server configuration error: Gemini API key is missing. Please set the GEMINI_API_KEY environment variable.", "success": False}), 500
     
-    try:
-        # Get user data sent from the client
+   try:
         data = request.json
-        user_input = data.get('userInput', '')
+        user_query = data.get('userQuery', 'No input provided.')
         
-        if not user_input:
-            return jsonify({"error": "No user input provided for analysis.", "success": False}), 400
-
-        # --- Gemini API Call Setup ---
-        
+        # 1. Update the System Instruction
+        # CRUCIAL: Instruct the model to generate a *specific* JSON object.
         system_instruction = (
-            "You are a Decision Intelligence and Action Designer. "
-            "Your goal is to provide a concise, structured, and professional analysis of problems using structured problem solving and decision making frameowkrs "
-            "based on the provided user input and collected data. "
-            "Structure your response with clear headings (e.g., Summary, Key Findings, Recommendations). "
-            "The entire output must be formatted using Markdown for clean rendering."
+            "You are a Decision Intelligence and Action Designer. Your goal is to provide a concise, structured analysis "
+            "of the user's data. **The output MUST be a strict JSON object.** "
+            "DO NOT include any Markdown formatting, explanations, or text outside of the JSON block."
         )
-
+        
         full_prompt = (
-            f"Please generate a logical report based on the following consolidated data:\n\n"
-            f"--- CONSOLIDATED USER DATA ---\n"
-            f"{user_input}\n"
-            f"--- END OF DATA ---\n"
-            f"Provide a professional report formatted strictly in Markdown."
+            f"Based on the following consolidated data, generate a structured analysis report. "
+            f"Use the JSON format: {{\"analysisTitle\": \"<Report Title>\", \"keyFindings\": [\"<Finding 1>\", \"<Finding 2>\", \"<Finding 3>\"]}}\n\n"
+            f"Data: {user_query}"
         )
 
-        # Initialize the client using the secure key
         client = genai.Client(api_key=GEMINI_API_KEY)
-
-        # Generate content
+        
+        # 2. Add response_mime_type to enforce JSON output
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=full_prompt,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=system_instruction
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                # *** THE FIX: Force the model to generate valid JSON ***
+                response_mime_type="application/json", 
             )
         )
         
-        # Return the generated text successfully
-        return jsonify({
-            "analysisText": response.text,
-            "success": True
-        })
+        # 3. Parse and Return the JSON
+        # Since response_mime_type is set, response.text is guaranteed to be a JSON string.
+        try:
+            analysis_data = json.loads(response.text)
+            
+            # Return the structured data directly
+            return jsonify({
+                "analysisData": analysis_data,
+                "success": True
+            })
+            
+        except json.JSONDecodeError as e:
+            # Fallback for when the model fails to follow the strict instruction
+            print(f"Server-side JSON parsing error: {e}")
+            return jsonify({
+                "error": "AI failed to produce a valid JSON report. Please retry.", 
+                "success": False
+            }), 500
 
     except APIError as e:
         print(f"Gemini API Error: {e}")
