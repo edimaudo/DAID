@@ -1,2 +1,2 @@
 # Daid
-A collaborative tool that helps decision makers leverage AI to make better decisions.
+A simple business tool that leverage the power of LLM to help make better decisions.
