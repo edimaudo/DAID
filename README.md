@@ -6,14 +6,14 @@ Built using Gemini API, Flask, html, css and javascript.  It was hosted on verce
 
 ## Setup
 DAID
-"""
+'
 ├── templates
 │   ├── app.html
 │   └── index.html
 ├── requirements.txt
 ├── vercel.json
 ├── app.py
-"""
+'
 
 
 
