@@ -536,7 +536,7 @@ async function handleNext() {
                 const newAnalysisResult = {
                     // Use a default framework name since our new API call doesn't specify one
                     framework_name: structuredAnalysis.analysisTitle || "Custom Strategic Analysis",
-                    why_selected: "Analysis generated via the streamlined server endpoint. The analysis Title and Findings are structured directly from the AI.",
+                    why_selected: "The analysis Title and Findings are structured directly from the AI.",
                     decision: structuredAnalysis.keyFindings[0] || "Review the key findings for the core decision.",
                     sections: [{
                         title: "Key Findings & Action Items",
