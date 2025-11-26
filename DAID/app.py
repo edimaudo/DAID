@@ -48,8 +48,8 @@ def generate_analysis():
         # 1. Update the System Instruction
         # CRUCIAL: Instruct the model to generate a *specific* JSON object.
         system_instruction = (
-            "You are a Decision Intelligence and Action Designer. Your goal is to provide a concise, structured analysis "
-            "of the user's data. **The output MUST be a strict JSON object.** "
+            "You are a Decision Intelligence and Action Designer. Your goal is to provide a concise, structured analysis leveraging problem solving and decision frameworks "
+            "of the user's data and then provide logical recommendations. **The output MUST be a strict JSON object.** "
             "DO NOT include any Markdown formatting, explanations, or text outside of the JSON block."
         )
         
