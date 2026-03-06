@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="relative overflow-hidden pt-16 pb-32">
+    <div class="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
+        <div class="text-center">
+            <h1 class="text-5xl font-extrabold tracking-tight text-gray-900 sm:text-6xl">
+                Intelligence for <span class="text-blue-600">Action</span>
+            </h1>
+            <p class="mt-6 text-xl leading-8 text-gray-600 max-w-2xl mx-auto">
+                DAID leverages the Airia.ai orchestration layer to turn messy, complex problems into actionable strategic decisions.
+            </p>
+            <div class="mt-10 flex items-center justify-center gap-x-6">
+                <a href="/framer" class="rounded-md bg-blue-600 px-6 py-3 text-lg font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                    Get Started
+                </a>
+                <a href="/decision-information" class="text-sm font-semibold leading-6 text-gray-900">Learn about frameworks <span aria-hidden="true">→</span></a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white py-24 sm:py-32">
+    <div class="mx-auto max-w-7xl px-6 lg:px-8">
+        <div class="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="flex flex-col">
+                <dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                    <div class="h-5 w-5 flex-none text-blue-600">1</div>
+                    The Framer
+                </dt>
+                <dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                    <p class="flex-auto">Brain dump your messy ideas. Our diagnostic agent identifies the root cause using the 5 Whys.</p>
+                </dd>
+            </div>
+            <div class="flex flex-col">
+                <dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                    <div class="h-5 w-5 flex-none text-blue-600">2</div>
+                    HITL Validation
+                </dt>
+                <dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                    <p class="flex-auto">A Human-in-the-loop checkpoint ensures the AI is solving the right problem before proceeding.</p>
+                </dd>
+            </div>
+            <div class="flex flex-col">
+                <dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                    <div class="h-5 w-5 flex-none text-blue-600">3</div>
+                    Solution Design
+                </dt>
+                <dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                    <p class="flex-auto">Apply professional frameworks like Porter's 5 Forces or CBA to generate a strategic memo.</p>
+                </dd>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
