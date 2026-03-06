@@ -1,14 +1,29 @@
 {% extends "base.html" %}
 
 {% block head %}
-
+<style>
+    .card-elevate { transition: all 0.3s ease; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; cursor: pointer; background: white; }
+    .card-elevate:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: #cbd5e1; }
+    .selected-framework { border-color: #2563eb !important; background-color: #eff6ff !important; ring: 2px solid #2563eb; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-6xl mx-auto px-6 py-12">
-    <div class="mb-8 bg-blue-50 border border-blue-200 rounded-2xl p-6">
+    
+    <div id="validatedHeader" class="mb-8 bg-blue-50 border border-blue-200 rounded-2xl p-6 hidden">
         <h3 class="text-sm font-bold text-blue-900 uppercase tracking-wider mb-2">Validated Problem Statement</h3>
         <p id="displayProblem" class="text-blue-800 font-medium"></p>
+        <button onclick="clearProblem()" class="mt-2 text-xs text-blue-600 underline">Change problem</button>
+    </div>
+
+    <div id="directEntryBox" class="mb-8 bg-gray-50 border border-gray-200 rounded-2xl p-6 hidden">
+        <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Enter Your Structured Problem</h3>
+        <textarea id="manualProblemInput" rows="3" 
+                  placeholder="e.g. We need to decide whether to expand into the European market given current supply chain constraints..."
+                  class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
     </div>
 
     <div id="step-content" class="bg-white rounded-3xl p-8 min-h-[500px] shadow-sm border border-gray-100">
@@ -21,11 +36,11 @@
     </div>
 
     <div id="result-content" class="mt-8 bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hidden prose max-w-none">
-    </div>
+        </div>
 </div>
 
 <script>
-  const FRAMEWORKS = [
+ const FRAMEWORKS = [
             { id: "swot", name: "SWOT Analysis", description: "Evaluate Strengths, Weaknesses, Opportunities, and Threats" },
             { id: "porter-five-forces", name: "Porter's Five Forces", description: "Assess competitive dynamics and market forces" },
             { id: "first-principles", name: "First Principles", description: "Break down complex problems to fundamental truths" },
@@ -99,33 +114,39 @@
             { id: "portfolio-of-initiatives", name: "Portfolio of Initiatives", description: "Organizing and prioritizing a collection of strategic projects" },
             { id: "eisenhower-matrix", name: "Eisenhower Matrix", description: "Prioritize tasks by categorizing them based on Urgency and Importance" },
         ];
+
     window.appState = {
         selectedFrameworks: [],
         cleanProblem: ''
     };
 
-    // On Load: Grab the problem from Framer
     document.addEventListener("DOMContentLoaded", () => {
-        const problem = localStorage.getItem('daid_clean_problem');
-        if (!problem) {
-            window.location.href = "/framer"; // Kick them back if they skipped Step 1
-            return;
+        const storedProblem = localStorage.getItem('daid_clean_problem');
+        
+        if (storedProblem) {
+            // FLOW 1: From Framer
+            window.appState.cleanProblem = storedProblem;
+            document.getElementById('displayProblem').innerText = storedProblem;
+            document.getElementById('validatedHeader').classList.remove('hidden');
+        } else {
+            // FLOW 2: Direct Entry
+            document.getElementById('directEntryBox').classList.remove('hidden');
         }
-        window.appState.cleanProblem = problem;
-        document.getElementById('displayProblem').innerText = problem;
         
         document.getElementById('step-content').appendChild(renderStep2());
     });
 
-    // Keep your exact renderStep2 and toggleFramework functions
     function renderStep2() {
         const div = document.createElement('div');
         div.id = 'framework-grid-container';
         div.className = 'space-y-6 animate-in fade-in duration-500';
         div.innerHTML = `
-            <div>
-                <h2 class="text-3xl font-bold font-inter text-gray-900">Select Decision Framework</h2>
-                <p class="text-gray-500">Choose a framework to guide the AI analysis.</p>
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900">Select Solution Design</h2>
+                    <p class="text-gray-500">Pick a framework to structure the AI's strategic response.</p>
+                </div>
+                <div class="text-sm font-semibold text-blue-600" id="selectionCount">0 Frameworks Selected</div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                 ${FRAMEWORKS.map(f => `
@@ -141,29 +162,33 @@
     }
 
     function toggleFramework(id) {
-        // Enforce single selection for cleaner Agent 2 prompting, or keep array if you want multi-framework
-        window.appState.selectedFrameworks = [id]; 
-        
-        // Re-render
+        window.appState.selectedFrameworks = [id]; // Force single selection
         document.getElementById('framework-grid-container').replaceWith(renderStep2());
-        
-        // Show Generate Button
+        document.getElementById('selectionCount').innerText = "1 Framework Selected";
         document.getElementById('generateBtn').classList.remove('hidden');
     }
 
-    // New API Call to Agent 2
     async function runAgentTwo() {
+        // Validation for Flow 2
+        if (!window.appState.cleanProblem) {
+            const manualInput = document.getElementById('manualProblemInput').value;
+            if (!manualInput || manualInput.length < 10) {
+                alert("Please enter a structured problem description first.");
+                return;
+            }
+            window.appState.cleanProblem = manualInput;
+        }
+
         const btn = document.getElementById('generateBtn');
-        btn.innerText = "Generating Memo...";
+        btn.innerText = "Designing Solution...";
         btn.disabled = true;
 
         try {
-            const response = await fetch('/api/design_solution', {
+            const response = await fetch('/api/generate_analysis', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    cleanProblem: window.appState.cleanProblem,
-                    frameworkId: window.appState.selectedFrameworks[0] 
+                    userQuery: `Using the ${window.appState.selectedFrameworks[0]} framework, provide a strategic solution for this problem: ${window.appState.cleanProblem}`
                 })
             });
             const data = await response.json();
@@ -171,20 +196,23 @@
             if(data.success) {
                 const resDiv = document.getElementById('result-content');
                 resDiv.classList.remove('hidden');
-                
-                resDiv.innerText = data.analysisData; 
+                resDiv.innerHTML = `<div class="prose max-w-none">${data.analysisData.replace(/\n/g, '<br>')}</div>`; 
                 document.getElementById('step-content').classList.add('hidden');
+                document.getElementById('validatedHeader').classList.add('hidden');
+                document.getElementById('directEntryBox').classList.add('hidden');
                 btn.classList.add('hidden');
-            } else {
-                alert("Error generating solution.");
             }
         } catch (error) {
-            console.error(error);
             alert("Connection error.");
         } finally {
-            btn.innerText = "Generate Strategic Memo";
+            btn.innerText = "Generate Solution";
             btn.disabled = false;
         }
+    }
+
+    function clearProblem() {
+        localStorage.removeItem('daid_clean_problem');
+        location.reload();
     }
 </script>
 {% endblock %}
