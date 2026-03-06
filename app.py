@@ -4,9 +4,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
-# TODO: Create agents.py with these new Airia.ai agent functions
-# from agents import agent_framer, agent_solution_designer 
-
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
@@ -30,6 +27,10 @@ async def main_app(request: Request):
 async def decision_info(request: Request):
     return templates.TemplateResponse("decision_info.html", {"request": request})
 
+# 404 Handler
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, __):
+    return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
 
 # # API Step 1: Process Messy Input
 # @app.post("/api/frame_problem")
@@ -64,7 +65,4 @@ async def decision_info(request: Request):
 #     except Exception as e:
 #         return JSONResponse(status_code=500, content={"error": str(e), "success": False})
 
-# Custom 404 Handler
-@app.exception_handler(404)
-async def custom_404_handler(request: Request, __):
-    return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
