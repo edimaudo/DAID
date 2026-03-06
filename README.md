@@ -1,19 +1,24 @@
-# Daid
-A simple business tool that leverage the power of LLM to help make better decisions.
+# DAID
 
-## Design
-Built using Gemini API, Flask, html, css and javascript.  It was hosted on vercel
+## Overview
+DAID is built to help users move from messy thoughts to smarter decisions.  It leverages the Airia.ai platform to transform disorganized, "messy" human problems into structured strategic decisions.
 
-## Setup
-DAID
+
+## Project Structure
 ```
-├── templates
-│   ├── app.html
-│   └── index.html
-├── requirements.txt
-├── vercel.json
-├── app.py
+DAID/
+├── app.py              
+├── agents.py           
+├── requirements.txt    
+├── vercel.json         
+├── .env                
+└── templates/          
+    ├── base.html       
+    ├── index.html      
+    ├── framer.html     
+    ├── app.html        
+    ├── decision_info.html 
+    └── 404.html        
+
 ```
-
-
 
