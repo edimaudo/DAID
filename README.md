@@ -10,8 +10,7 @@ DAID/
 ├── app.py              
 ├── agents.py           
 ├── requirements.txt    
-├── vercel.json         
-├── .env                
+├── vercel.json                      
 └── templates/          
     ├── base.html       
     ├── index.html      
@@ -19,6 +18,5 @@ DAID/
     ├── app.html        
     ├── decision_info.html 
     └── 404.html        
-
 ```
 
