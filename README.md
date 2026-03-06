@@ -1,7 +1,7 @@
 # DAID
 
 ## Overview
-DAID is built to help users move from messy thoughts to smarter decisions.  It leverages the Airia.ai platform to transform disorganized, "messy" human problems into structured strategic decisions.
+DAID is built to help users move from messy thoughts to smarter decisions.
 
 
 ## Project Structure
