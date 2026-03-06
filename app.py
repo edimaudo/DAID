@@ -23,7 +23,7 @@ async def framer_page(request: Request):
 # Solution Designer / Framework Selector
 @app.get("/app", response_class=HTMLResponse)
 async def main_app(request: Request):
-    return templates.TemplateResponse("app.html", {"request": request)
+    return templates.TemplateResponse("app.html", {"request": request})
 
 # Decision Information Page
 @app.get("/decision-information", response_class=HTMLResponse)
