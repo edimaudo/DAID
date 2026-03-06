@@ -1,37 +1,149 @@
 {% extends "base.html" %}
+% block head %}
+<style>
+    .framework-card {
+        transition: all 0.2s ease;
+    }
+    .framework-card:hover {
+        border-color: #3b82f6;
+        transform: translateY(-2px);
+    }
+    .sticky-header {
+        position: sticky;
+        top: 64px; /* Height of your navbar */
+        z-index: 40;
+        background: rgba(248, 250, 252, 0.9);
+        backdrop-filter: blur(8px);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto py-16 px-6">
-    <header class="mb-12">
-        <h1 class="text-4xl font-extrabold text-gray-900 mb-4">Decision Approaches</h1>
-        <p class="text-xl text-gray-600">The frameworks used by DAID agents to structure messy problems into clear actions.</p>
+<div class="max-w-7xl mx-auto py-16 px-6">
+    <header class="mb-12 text-center">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-4">Decision Frameworks</h1>
+        <p class="text-xl text-gray-600 max-w-2xl mx-auto">An overview of different decisions frameworks</p>
     </header>
 
-    <div class="grid gap-8">
-        <section class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-            <h2 class="text-2xl font-bold text-blue-600 mb-3">5 Whys</h2>
-            <p class="text-gray-700 leading-relaxed">
-                An iterative interrogative technique used to explore the cause-and-effect relationships underlying a particular problem. Used by <strong>The Framer</strong> to reach the root cause.
-            </p>
-        </section>
-
-        <section class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-            <h2 class="text-2xl font-bold text-blue-600 mb-3">Porter's 5 Forces</h2>
-            <p class="text-gray-700 leading-relaxed">
-                A framework that analyzes five competitive forces that shape every industry and helps determine an industry's weaknesses and strengths.
-            </p>
-        </section>
-
-        <section class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-            <h2 class="text-2xl font-bold text-blue-600 mb-3">7 Thinking Hats</h2>
-            <p class="text-gray-700 leading-relaxed">
-                A tool for group discussion and individual thinking involving six colored hats, each representing a different perspective (Emotional, Logical, Critical, etc.).
-            </p>
-        </section>
+    <div class="sticky-header py-4 mb-8 border-b border-gray-200">
+        <div class="relative max-w-md mx-auto">
+            <input type="text" id="frameworkSearch" onkeyup="filterFrameworks()" placeholder="Search frameworks (e.g., 'SWOT', 'Agile')..." 
+                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <div class="absolute left-3 top-2.5 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+        </div>
     </div>
-    
-    <div class="mt-12 text-center">
-        <a href="/framer" class="text-blue-600 font-bold hover:underline">Ready to test these? Start Framing →</a>
+
+    <div id="frameworkGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% set frameworks = [
+            {"id": "swot", "name": "SWOT Analysis", "desc": "Evaluate Strengths, Weaknesses, Opportunities, and Threats"},
+            {"id": "porter-five-forces", "name": "Porter's Five Forces", "desc": "Assess competitive dynamics and market forces"},
+            {"id": "first-principles", "name": "First Principles", "desc": "Break down complex problems to fundamental truths"},
+            {"id": "design-thinking", "name": "Design Thinking", "desc": "Human-centered iterative problem-solving approach"},
+            {"id": "csd-matrix", "name": "CSD Matrix", "desc": "Analyze Certainties, Suppositions, and Doubts"},
+            {"id": "golden-circle", "name": "Golden Circle", "desc": "Start with Why - Purpose, How, and What framework"},
+            {"id": "cynefin", "name": "The Cynefin Framework", "desc": "Understand decision context: simple, complicated, complex, or chaotic"},
+            {"id": "decision-matrix", "name": "Decision Matrix", "desc": "Quantitatively compare options against weighted criteria"},
+            {"id": "rice-ice", "name": "RICE/ICE", "desc": "Prioritization frameworks: Reach, Impact, Confidence, Effort / Impact, Confidence, Ease"},
+            {"id": "decision-trees", "name": "Decision Trees", "desc": "Visualize potential outcomes, costs, and consequences of choices"},
+            {"id": "impact-effort-matrix", "name": "Impact Effort Matrix", "desc": "Prioritize initiatives based on potential impact versus required effort"},
+            {"id": "ooda-loop", "name": "OODA Loop", "desc": "Observe, Orient, Decide, Act—a rapid decision-making cycle"},
+            {"id": "spade", "name": "S.P.A.D.E", "desc": "Setting, People, Alternatives, Decide, Explain decision-making process"},
+            {"id": "pdca", "name": "PDCA (Plan-Do-Check-Act)", "desc": "Iterative management method for continuous process improvement"},
+            {"id": "rapid", "name": "RAPID framework", "desc": "Define roles: Recommend, Agree, Perform, Input, Decide"},
+            {"id": "vroom-yetton", "name": "Vroom-Yetton decision model", "desc": "Determine the optimum degree of subordinate participation in decision-making"},
+            {"id": "star-model", "name": "STAR model", "desc": "Task, Action, Result—used for behavioral interviewing and decision review"},
+            {"id": "wrap", "name": "WRAP framework", "desc": "Process for making better choices: Widen options, Reality-test assumptions, Attain distance, Prepare to be wrong"},
+            {"id": "bridges", "name": "BRIDGeS framework", "desc": "Facilitation technique for structuring brainstorming and decision-making"},
+            {"id": "tdodar", "name": "TDODAR decision model", "desc": "Time, Diagnose, Options, Decide, Assign, Review—for high-stakes, time-critical situations"},
+            {"id": "daci", "name": "DACI decision-making framework", "desc": "Define roles: Driver, Approver, Contributor, Informed"},
+            {"id": "ladder-of-inference", "name": "Ladder of inference", "desc": "Trace how beliefs and assumptions lead to actions"},
+            {"id": "mcda", "name": "Multi-Criteria Decision Analysis (MCDA)", "desc": "Evaluate complex options against multiple, sometimes conflicting, criteria"},
+            {"id": "rpd", "name": "Recognition-Primed Decision model (RPD)", "desc": "How people make decisions in high-pressure, time-constrained situations"},
+            {"id": "maut", "name": "Multi-Attribute Utility Theory (MAUT)", "desc": "Formal method for calculating the utility of multi-dimensional choices"},
+            {"id": "foursquare-protocol", "name": "Foursquare Protocol", "desc": "Structured method for generating ideas and prioritizing them"},
+            {"id": "lightning-decision-jam", "name": "Lightning Decision Jam", "desc": "Rapid-fire workshop for problem-solving and decision-making"},
+            {"id": "pareto-analysis", "name": "Pareto Analysis", "desc": "80/20 Rule—identifying the vital few contributors to a problem"},
+            {"id": "fmea", "name": "Failure Mode And Effects Analysis", "desc": "Systematically identify, evaluate, and mitigate potential product or process failures"},
+            {"id": "blindspot-analysis", "name": "Blindspot Analysis", "desc": "Identify overlooked assumptions or external factors that could impact a decision"},
+            {"id": "comparable-company-analysis", "name": "Comparable Company Analysis", "desc": "Valuation method using metrics from similar publicly traded companies"},
+            {"id": "cost-benefit-analysis", "name": "Cost-Benefit Analysis", "desc": "Systematically evaluate the total costs and benefits of a project or decision"},
+            {"id": "agile-business-analysis", "name": "Agile Business Analysis", "desc": "Applying BA practices within an Agile development environment"},
+            {"id": "soar-analysis", "name": "SOAR Analysis", "desc": "Strengths, Opportunities, Aspirations, Results—a positive, future-focused analysis"},
+            {"id": "steeple-analysis", "name": "STEEPLE Analysis", "desc": "Analyze Sociocultural, Technological, Economic, Environmental, Political, Legal, and Ethical factors"},
+            {"id": "pestel-analysis", "name": "PESTEL Analysis", "desc": "Analyze Political, Economic, Sociocultural, Technological, Environmental, and Legal factors"},
+            {"id": "destep-analysis", "name": "DESTEP Analysis", "desc": "Demographics, Economy, Sociocultural, Technology, Ecology, Politics—a macro-environmental scan"},
+            {"id": "paired-comparison-analysis", "name": "Paired Comparison Analysis", "desc": "Prioritization method by comparing each item in a list with every other item"},
+            {"id": "hickam-dictum", "name": "Hickam’s Dictum", "desc": "Decision principle: 'Patients can have as many diseases as they damn well please'"},
+            {"id": "occam-razor", "name": "Occam’s Razor", "desc": "Decision principle: The simplest explanation is usually the best one"},
+            {"id": "occam-broom", "name": "Occam’s Broom", "desc": "Cognitive bias: Sweeping inconvenient data under the rug to maintain the simplest hypothesis"},
+            {"id": "outcome-bias", "name": "Outcome Bias", "desc": "Cognitive bias: Judging a decision based on the final outcome, rather than decision quality"},
+            {"id": "principle-agent-problem", "name": "Principle-Agent Problem", "desc": "Conflict of interest when an agent acts on behalf of a principal"},
+            {"id": "mendelow-matrix", "name": "Mendelow Stakeholder Matrix", "desc": "Map stakeholders by Power and Interest to determine strategy"},
+            {"id": "go-no-go", "name": "Go/No-Go Decision Making", "desc": "Simple binary decision point for project continuation"},
+            {"id": "mckinsey-7-degrees", "name": "McKinsey 7 Degrees of Freedom", "desc": "Framework for strategic growth—from core to white spaces"},
+            {"id": "x-matrix", "name": "X-Matrix", "desc": "Hoshin Kanri tool for deploying strategy across an organization"},
+            {"id": "bcg-matrix", "name": "BCG Growth-Share Matrix", "desc": "Portfolio planning based on market growth and market share"},
+            {"id": "ansoff-matrix", "name": "Ansoff's Matrix", "desc": "Framework for growth: Market Penetration, Development, Diversification"},
+            {"id": "scenario-planning", "name": "Scenario Planning Matrix", "desc": "Develop and test strategies against multiple plausible futures"},
+            {"id": "strategic-planning", "name": "Strategic Planning", "desc": "General process of defining strategy and allocating resources"},
+            {"id": "balanced-scorecard", "name": "Balanced Scorecard Framework", "desc": "Measure performance from Financial, Customer, Process, and Learning perspectives"},
+            {"id": "capability-opportunity", "name": "Capability vs Opportunity Analysis", "desc": "Assess internal capabilities against external market opportunities"},
+            {"id": "mckinsey-strategy-house", "name": "McKinsey Strategy House", "desc": "Framework for building a comprehensive corporate strategy"},
+            {"id": "risk-matrix", "name": "Risk Matrix", "desc": "Prioritize risks by plotting probability against impact severity"},
+            {"id": "growth-readiness", "name": "Growth Readiness Framework", "desc": "Evaluate an organization's preparedness for scaling operations"},
+            {"id": "how-to-formulate-strategy", "name": "How to Formulate a Strategy", "desc": "General guidance on creating a viable business strategy"},
+            {"id": "corporate-strategy-process", "name": "Corporate Strategy Process", "desc": "Steps and procedures for defining enterprise-wide strategy"},
+            {"id": "red-vs-blue-ocean", "name": "Red Ocean vs Blue Ocean Strategies", "desc": "Competing in existing markets vs. creating uncontested spaces"},
+            {"id": "mckinsey-7-s", "name": "McKinsey 7-S Framework", "desc": "Analyze effectiveness via seven interdependent factors like Style and Staff"},
+            {"id": "strategy-pyramid", "name": "Strategy Pyramid", "desc": "Aligning corporate, business unit, and functional strategies"},
+            {"id": "where-to-play", "name": "Where to Play and How to Win", "desc": "Core questions in strategic decision-making"},
+            {"id": "strategy-diamond", "name": "Strategy Diamond", "desc": "Facets of strategy: Arenas, Differentiators, Staging, Economic Logic"},
+            {"id": "vrio-analysis", "name": "VRIO Analysis", "desc": "Evaluate resources for Value, Rarity, and Imitability"},
+            {"id": "hypothesis-based-strategy", "name": "Hypothesis Based Strategy", "desc": "Developing and testing strategic options through hypotheses"},
+            {"id": "top-down-communication", "name": "Top-Down Communication", "desc": "Cascading decisions and strategy from leadership to teams"},
+            {"id": "ecosystem-strategy", "name": "The Ecosystem Strategy", "desc": "Strategy focused on collaborating with external partners"},
+            {"id": "6-pillar-ceo-scorecard", "name": "6 Pillar CEO Scorecard", "desc": "Performance measurement focusing on key CEO responsibilities"},
+            {"id": "operating-model-bridge", "name": "Operating Model Bridge", "desc": "Tool for linking strategy to operating model design"},
+            {"id": "core-competencies", "name": "Core Competencies", "desc": "Identify unique skills providing competitive advantage"},
+            {"id": "portfolio-of-initiatives", "name": "Portfolio of Initiatives", "desc": "Organizing and prioritizing strategic projects"},
+            {"id": "eisenhower-matrix", "name": "Eisenhower Matrix", "desc": "Prioritize tasks by categorizing them based on Urgency and Importance"}
+        ] %}
+
+        {% for f in frameworks %}
+        <div class="framework-item framework-card bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+            <h3 class="text-xl font-bold text-blue-600 mb-2">{{ f.name }}</h3>
+            <p class="text-gray-600 text-sm leading-relaxed">{{ f.desc }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mt-16 text-center">
+        <p class="text-gray-500 mb-6">Can't find what you're looking for? Our AI agents can adapt any framework to your specific needs.</p>
+        <a href="/framer" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition">Start Your First Frame →</a>
     </div>
 </div>
+
+<script>
+    function filterFrameworks() {
+        const input = document.getElementById('frameworkSearch').value.toLowerCase();
+        const items = document.getElementsByClassName('framework-item');
+        
+        for (let item of items) {
+            const title = item.getElementsByTagName('h3')[0].innerText.toLowerCase();
+            const desc = item.getElementsByTagName('p')[0].innerText.toLowerCase();
+            
+            if (title.includes(input) || desc.includes(input)) {
+                item.style.display = "block";
+            } else {
+                item.style.display = "none";
+            }
+        }
+    }
+</script>
 {% endblock %}
+
+
