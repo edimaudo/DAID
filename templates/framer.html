@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .hidden { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-16 px-6">
+    <div class="mb-10 text-center">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-4">The Framer</h1>
+        <p class="text-xl text-gray-600">Dump your messy problem here. Our agent will use the 5 Whys to find the root cause.</p>
+    </div>
+
+    <div class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+        <label for="messyInput" class="block text-sm font-semibold text-gray-700 mb-2">What's on your mind?</label>
+        <textarea id="messyInput" rows="6" class="w-full border border-gray-300 rounded-xl p-4 mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="e.g., We are losing clients and I think it's because our pricing is too high, but marketing says the product is outdated..."></textarea>
+        
+        <button id="frameBtn" onclick="submitToFramer()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">
+            Frame My Problem
+        </button>
+    </div>
+
+    <div id="hitlSection" class="hidden mt-8 bg-blue-50 rounded-3xl p-8 border border-blue-200 shadow-sm">
+        <h2 class="text-2xl font-bold text-blue-900 mb-2">Agent 1 Findings</h2>
+        <p class="text-blue-800 mb-4">Please review the synthesized problem statement below. Is this accurate?</p>
+        
+        <textarea id="cleanProblem" rows="4" class="w-full border border-blue-300 rounded-xl p-4 mb-6 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+        
+        <div class="flex gap-4">
+            <button onclick="approveAndProceed()" class="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition">
+                Looks Good - Choose Framework
+            </button>
+            <button onclick="document.getElementById('hitlSection').classList.add('hidden')" class="flex-1 bg-white text-gray-700 border border-gray-300 font-bold py-3 rounded-xl hover:bg-gray-50 transition">
+                Cancel & Rewrite
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function submitToFramer() {
+        const input = document.getElementById('messyInput').value;
+        const btn = document.getElementById('frameBtn');
+        
+        if (!input) return alert("Please enter a problem first.");
+        
+        btn.innerText = "Analyzing...";
+        btn.disabled = true;
+
+        try {
+            const response = await fetch('/api/frame_problem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messyInput: input })
+            });
+            const data = await response.json();
+            
+            if(data.success) {
+                // Populate and show the HITL section
+                document.getElementById('cleanProblem').value = data.framedProblem;
+                document.getElementById('hitlSection').classList.remove('hidden');
+                document.getElementById('hitlSection').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                alert("Error framing problem.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Connection error.");
+        } finally {
+            btn.innerText = "Frame My Problem";
+            btn.disabled = false;
+        }
+    }
+
+    function approveAndProceed() {
+        const cleanProblemText = document.getElementById('cleanProblem').value;
+        // Store the approved problem in localStorage to pass it to app.html (Agent 2)
+        localStorage.setItem('daid_clean_problem', cleanProblemText);
+        window.location.href = "/app";
+    }
+</script>
+{% endblock %}
