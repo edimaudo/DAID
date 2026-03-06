@@ -1,13 +1,7 @@
 {% extends "base.html" %}
 
 {% block head %}
-<script src="https://unpkg.com/lucide@latest"></script>
-<style>
-    /* ... (Keep your exact existing CSS variables and classes here) ... */
-</style>
-<script>
-    const __app_id = `{{ app_id }}`;
-</script>
+
 {% endblock %}
 
 {% block content %}
@@ -22,7 +16,7 @@
     
     <div class="mt-8 flex justify-end items-center">
         <button id="generateBtn" onclick="runAgentTwo()" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 hidden">
-            Generate Strategic Memo
+            Generate Solution
         </button>
     </div>
 
@@ -31,9 +25,80 @@
 </div>
 
 <script>
-    // Keep your exact FRAMEWORKS array here
-    const FRAMEWORKS = [ /* ... your 72 frameworks ... */ ];
-
+  const FRAMEWORKS = [
+            { id: "swot", name: "SWOT Analysis", description: "Evaluate Strengths, Weaknesses, Opportunities, and Threats" },
+            { id: "porter-five-forces", name: "Porter's Five Forces", description: "Assess competitive dynamics and market forces" },
+            { id: "first-principles", name: "First Principles", description: "Break down complex problems to fundamental truths" },
+            { id: "design-thinking", name: "Design Thinking", description: "Human-centered iterative problem-solving approach" },
+            { id: "csd-matrix", name: "CSD Matrix", description: "Analyze Certainties, Suppositions, and Doubts" },
+            { id: "golden-circle", name: "Golden Circle", description: "Start with Why - Purpose, How, and What framework" },
+            { id: "cynefin", name: "The Cynefin Framework", description: "Understand decision context: simple, complicated, complex, or chaotic" },
+            { id: "decision-matrix", name: "Decision Matrix", description: "Quantitatively compare options against weighted criteria" },
+            { id: "rice-ice", name: "RICE/ICE", description: "Prioritization frameworks: Reach, Impact, Confidence, Effort / Impact, Confidence, Ease" },
+            { id: "decision-trees", name: "Decision Trees", description: "Visualize potential outcomes, costs, and consequences of choices" },
+            { id: "impact-effort-matrix", name: "Impact Effort Matrix", description: "Prioritize initiatives based on potential impact versus required effort" },
+            { id: "ooda-loop", name: "OODA Loop", description: "Observe, Orient, Decide, Act—a rapid decision-making cycle" },
+            { id: "spade", name: "S.P.A.D.E", description: "Setting, People, Alternatives, Decide, Explain decision-making process" },
+            { id: "pdca", name: "PDCA (Plan-Do-Check-Act)", description: "Iterative management method for continuous process improvement" },
+            { id: "rapid", name: "RAPID framework", description: "Define roles: Recommend, Agree, Perform, Input, Decide" },
+            { id: "vroom-yetton", name: "Vroom-Yetton decision model", description: "Determine the optimum degree of subordinate participation in decision-making" },
+            { id: "star-model", name: "STAR model", description: "Task, Action, Result—used for behavioral interviewing and decision review" },
+            { id: "wrap", name: "WRAP framework", description: "Process for making better choices: Widen options, Reality-test assumptions, Attain distance, Prepare to be wrong" },
+            { id: "bridges", name: "BRIDGeS framework", description: "Facilitation technique for structuring brainstorming and decision-making" },
+            { id: "tdodar", name: "TDODAR decision model", description: "Time, Diagnose, Options, Decide, Assign, Review—for high-stakes, time-critical situations" },
+            { id: "daci", name: "DACI decision-making framework", description: "Define roles: Driver, Approver, Contributor, Informed" },
+            { id: "ladder-of-inference", name: "Ladder of inference", description: "Trace how beliefs and assumptions lead to actions" },
+            { id: "mcda", name: "Multi-Criteria Decision Analysis (MCDA)", description: "Evaluate complex options against multiple, sometimes conflicting, criteria" },
+            { id: "rpd", name: "Recognition-Primed Decision model (RPD)", description: "How people make decisions in high-pressure, time-constrained situations" },
+            { id: "maut", name: "Multi-Attribute Utility Theory (MAUT)", description: "Formal method for calculating the utility of multi-dimensional choices" },
+            { id: "foursquare-protocol", name: "Foursquare Protocol", description: "Structured method for generating ideas and prioritizing them" },
+            { id: "lightning-decision-jam", name: "Lightning Decision Jam", description: "Rapid-fire workshop for problem-solving and decision-making" },
+            { id: "pareto-analysis", name: "Pareto Analysis", description: "80/20 Rule—identifying the vital few contributors to a problem" },
+            { id: "fmea", name: "Failure Mode And Effects Analysis", description: "Systematically identify, evaluate, and mitigate potential product or process failures" },
+            { id: "blindspot-analysis", name: "Blindspot Analysis", description: "Identify overlooked assumptions or external factors that could impact a decision" },
+            { id: "comparable-company-analysis", name: "Comparable Company Analysis", description: "Valuation method using metrics from similar publicly traded companies" },
+            { id: "cost-benefit-analysis", name: "Cost-Benefit Analysis", description: "Systematically evaluate the total costs and benefits of a project or decision" },
+            { id: "agile-business-analysis", name: "Agile Business Analysis", description: "Applying BA practices within an Agile development environment" },
+            { id: "soar-analysis", name: "SOAR Analysis", description: "Strengths, Opportunities, Aspirations, Results—a positive, future-focused analysis" },
+            { id: "steeple-analysis", name: "STEEPLE Analysis", description: "Analyze Sociocultural, Technological, Economic, Environmental, Political, Legal, and Ethical factors" },
+            { id: "pestel-analysis", name: "PESTEL Analysis", description: "Analyze Political, Economic, Sociocultural, Technological, Environmental, and Legal factors" },
+            { id: "destep-analysis", name: "DESTEP Analysis", description: "Demographics, Economy, Sociocultural, Technology, Ecology, Politics—a macro-environmental scan" },
+            { id: "paired-comparison-analysis", name: "Paired Comparison Analysis", description: "Prioritization method by comparing each item in a list with every other item" },
+            { id: "hickam-dictum", name: "Hickam’s Dictum", description: "Decision principle: 'Patients can have as many diseases as they damn well please' (Avoid Occam's Razor tunnel vision)" },
+            { id: "occam-razor", name: "Occam’s Razor", description: "Decision principle: The simplest explanation is usually the best one" },
+            { id: "occam-broom", name: "Occam’s Broom", description: "Cognitive bias: Sweeping inconvenient data under the rug to maintain the simplest hypothesis" },
+            { id: "outcome-bias", name: "Outcome Bias", description: "Cognitive bias: Judging a decision based on the final outcome, rather than the quality of the decision at the time it was made" },
+            { id: "principle-agent-problem", name: "Principle-Agent Problem", description: "Conflict of interest when one person or entity (agent) acts on behalf of another (principal)" },
+            { id: "mendelow-matrix", name: "Mendelow Stakeholder Matrix", description: "Map stakeholders by Power and Interest to determine management strategy" },
+            { id: "go-no-go", name: "Go/No-Go Decision Making", description: "Simple binary decision point for project continuation" },
+            { id: "mckinsey-7-degrees", name: "McKinsey 7 Degrees of Freedom", description: "Framework for strategic growth—from expanding the core to creating white spaces" },
+            { id: "x-matrix", name: "X-Matrix", description: "Hoshin Kanri tool for deploying strategy across an organization" },
+            { id: "bcg-matrix", name: "BCG Growth-Share Matrix", description: "Portfolio planning based on market growth and relative market share" },
+            { id: "ansoff-matrix", name: "Ansoff's Matrix", description: "Framework for corporate growth strategy: Market Penetration, Development, Product Development, Diversification" },
+            { id: "scenario-planning", name: "Scenario Planning Matrix", description: "Develop and test strategies against multiple plausible futures" },
+            { id: "strategic-planning", name: "Strategic Planning", description: "General process of defining strategy and allocating resources" },
+            { id: "balanced-scorecard", name: "Balanced Scorecard Framework", description: "Measure performance from four perspectives: Financial, Customer, Internal Process, and Learning & Growth" },
+            { id: "capability-opportunity", name: "Capability vs Opportunity Analysis", description: "Assess internal capabilities against external market opportunities" },
+            { id: "mckinsey-strategy-house", name: "McKinsey Strategy House", description: "Framework for building a comprehensive corporate strategy" },
+            { id: "risk-matrix", name: "Risk Matrix", description: "Assess and prioritize risks by plotting the probability of occurrence against the severity of the impact" },
+            { id: "growth-readiness", name: "Growth Readiness Framework", description: "Evaluate an organization's preparedness for scaling operations" },
+            { id: "how-to-formulate-strategy", name: "How to Formulate a Strategy", description: "General guidance on creating a viable business strategy" },
+            { id: "corporate-strategy-process", name: "Corporate Strategy Process", description: "Steps and procedures for defining enterprise-wide strategy" },
+            { id: "red-vs-blue-ocean", name: "Red Ocean vs Blue Ocean Strategies", description: "Competing in existing markets vs. creating new, uncontested market spaces" },
+            { id: "mckinsey-7-s", name: "McKinsey 7-S Framework", description: "Analyze organizational effectiveness using seven interdependent factors: Strategy, Structure, Systems, Shared Values, Style, Staff, Skills" },
+            { id: "strategy-pyramid", name: "Strategy Pyramid", description: "Aligning corporate, business unit, and functional strategies" },
+            { id: "where-to-play", name: "Where to Play and How to Win", description: "Core questions in strategic decision-making" },
+            { id: "strategy-diamond", name: "Strategy Diamond", description: "Framework detailing five facets of strategy: Arenas, Vehicles, Differentiators, Staging, Economic Logic" },
+            { id: "vrio-analysis", name: "VRIO Analysis", description: "Evaluate resources for Value, Rarity, Imitability, and Organization for sustained competitive advantage" },
+            { id: "hypothesis-based-strategy", name: "Hypothesis Based Strategy", description: "Developing and testing strategic options through hypotheses" },
+            { id: "top-down-communication", name: "Top-Down Communication", description: "Methodology for cascading decisions and strategy from leadership to teams" },
+            { id: "ecosystem-strategy", name: "The Ecosystem Strategy", description: "Strategy focused on collaborating with external partners in a network" },
+            { id: "6-pillar-ceo-scorecard", name: "6 Pillar CEO Scorecard", description: "Performance measurement focusing on six key areas of CEO responsibility" },
+            { id: "operating-model-bridge", name: "Operating Model Bridge", description: "Tool for linking strategy to the operating model design" },
+            { id: "core-competencies", name: "Core Competencies", description: "Identify unique skills and technologies that provide competitive advantage" },
+            { id: "portfolio-of-initiatives", name: "Portfolio of Initiatives", description: "Organizing and prioritizing a collection of strategic projects" },
+            { id: "eisenhower-matrix", name: "Eisenhower Matrix", description: "Prioritize tasks by categorizing them based on Urgency and Importance" },
+        ];
     window.appState = {
         selectedFrameworks: [],
         cleanProblem: ''
@@ -106,7 +171,7 @@
             if(data.success) {
                 const resDiv = document.getElementById('result-content');
                 resDiv.classList.remove('hidden');
-                // Normally you would parse Markdown here, but we will just insert text for structure validation
+                
                 resDiv.innerText = data.analysisData; 
                 document.getElementById('step-content').classList.add('hidden');
                 btn.classList.add('hidden');
