@@ -30,9 +30,9 @@
     </div>
 
     <div id="directEntryBox" class="mb-8 bg-gray-50 border border-gray-200 rounded-2xl p-6 hidden">
-        <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Enter Your Structured Problem</h3>
+        <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Enter Structured Problem</h3>
         <textarea id="manualProblemInput" rows="3" 
-                  placeholder="Describe the structured problem you want to solve..."
+                  placeholder="Describe the problem you want to solve..."
                   class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
     </div>
 
@@ -49,7 +49,7 @@
 
 <script>
     const FRAMEWORKS = [
-        { id: "auto-select", name: "✨ AI Auto-Select", desc: "Let DAID analyze your problem and automatically apply the most effective framework." },
+        { id: "auto-select", name: "Auto-Select", desc: "Let DAID analyze your problem and automatically apply the most effective framework." },
         { id: "swot", name: "SWOT Analysis", desc: "Evaluate Strengths, Weaknesses, Opportunities, and Threats" },
         { id: "porter-five-forces", name: "Porter's Five Forces", desc: "Assess competitive dynamics and market forces" },
         { id: "first-principles", name: "First Principles", desc: "Break down complex problems to fundamental truths" },
@@ -151,8 +151,8 @@
         div.className = 'space-y-6 animate-in fade-in duration-500';
         div.innerHTML = `
             <div>
-                <h2 class="text-3xl font-bold font-inter text-gray-900">Select Solution Design</h2>
-                <p class="text-gray-500">Choose a framework or let AI decide the best approach.</p>
+                <h2 class="text-3xl font-bold font-inter text-gray-900">Select Decision Framework</h2>
+                <p class="text-gray-500">Choose a framework or let DAID decide the best approach.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                 ${FRAMEWORKS.map(f => `
@@ -198,7 +198,7 @@
         }
 
         try {
-            const response = await fetch('/api/generate_analysis', {
+            const response = await fetch('/generate_analysis', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
