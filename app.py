@@ -49,7 +49,7 @@ async def custom_404_handler(request: Request, __):
 #         return JSONResponse(status_code=500, content={"error": str(e), "success": False})
 
 # # API Step 2: Generate Final Framework Analysis
-# @app.post("/api/design_solution")
+# @app.post("/generate_analysis")
 # async def design_solution(request: Request):
 #     data = await request.json()
 #     clean_problem = data.get('cleanProblem', '')
