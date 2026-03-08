@@ -2,9 +2,9 @@ import os
 import httpx
 import json
 from fastapi import HTTPException
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-#load_dotenv()
+load_dotenv()
 
 AIRIA_USER_ID = os.getenv("AIRIA_USER_ID")
 AIRIA_KEY = os.getenv("AIRIA_API_KEY")
