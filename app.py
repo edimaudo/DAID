@@ -36,13 +36,26 @@ async def main_app(request: Request):
 @app.post("/app")
 async def generate_analysis(request: Request):
     data = await request.json()
-    clean_problem = data.get('cleanProblem', '')
-    framework_id = data.get('frameworkId', 'auto-select')
+    
+    # These keys MUST match the JSON.stringify() in your app.html
+    clean_problem = data.get('problem', '') 
+    framework_id = data.get('framework_id', 'auto-select')
+
     try:
         result = await agent_solution_designer(clean_problem, framework_id)
         return {"analysisData": result, "success": True}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e), "success": False})
+
+# async def generate_analysis(request: Request):
+#     data = await request.json()
+#     clean_problem = data.get('cleanProblem', '')
+#     framework_id = data.get('frameworkId', 'auto-select')
+#     try:
+#         result = await agent_solution_designer(clean_problem, framework_id)
+#         return {"analysisData": result, "success": True}
+#     except Exception as e:
+#         return JSONResponse(status_code=500, content={"error": str(e), "success": False})
 
 # Decision Information Page
 @app.get("/decision-information", response_class=HTMLResponse)
