@@ -20,17 +20,19 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto px-6 py-12">
-    <div id="validatedHeader" class="mb-8 bg-blue-50 border border-blue-200 rounded-2xl p-6 hidden">
-        <h3 class="text-sm font-bold text-blue-900 uppercase tracking-wider mb-2">Validated Problem Statement</h3>
-        <p id="displayProblem" class="text-blue-800 font-medium"></p>
-        <button onclick="clearProblem()" class="mt-2 text-xs text-blue-600 underline">Change problem</button>
-    </div>
+    <div id="input-section">
+        <div id="validatedHeader" class="mb-8 bg-blue-50 border border-blue-200 rounded-2xl p-6 hidden">
+            <h3 class="text-sm font-bold text-blue-900 uppercase tracking-wider mb-2">Validated Problem Statement</h3>
+            <p id="displayProblem" class="text-blue-800 font-medium"></p>
+            <button onclick="clearProblem()" class="mt-2 text-xs text-blue-600 underline">Change problem</button>
+        </div>
 
-    <div id="directEntryBox" class="mb-8 bg-gray-50 border border-gray-200 rounded-2xl p-6 hidden">
-        <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Enter Structured Problem</h3>
-        <textarea id="manualProblemInput" rows="3" 
-                  placeholder="Describe the problem you want to solve..."
-                  class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+        <div id="directEntryBox" class="mb-8 bg-gray-50 border border-gray-200 rounded-2xl p-6 hidden">
+            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Enter Structured Problem</h3>
+            <textarea id="manualProblemInput" rows="3" 
+                      placeholder="Describe the problem you want to solve..."
+                      class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+        </div>
     </div>
 
     <div id="step-content" class="bg-white rounded-3xl p-8 min-h-[500px] shadow-sm border border-gray-100"></div>
@@ -41,7 +43,15 @@
         </button>
     </div>
 
-    <div id="result-content" class="mt-8 bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hidden prose max-w-none"></div>
+    <div id="result-content" class="mt-8 bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hidden prose max-w-none">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h2 class="text-xl font-bold text-gray-900">Solution Architect</h2>
+            <button onclick="goBackToSelection()" class="text-sm font-semibold text-blue-600 hover:text-blue-800">
+                ← Back to Frameworks
+            </button>
+        </div>
+        <div id="analysis-render-area" class="whitespace-pre-wrap font-body text-gray-800"></div>
+    </div>
 </div>
 
 <script>
@@ -129,12 +139,14 @@
     document.addEventListener("DOMContentLoaded", () => {
         const storedProblem = localStorage.getItem('daid_clean_problem');
         
-        if (storedProblem) {
+        if (storedProblem && storedProblem.trim().length > 0) {
             window.appState.cleanProblem = storedProblem;
             document.getElementById('displayProblem').innerText = storedProblem;
             document.getElementById('validatedHeader').classList.remove('hidden');
+            document.getElementById('directEntryBox').classList.add('hidden');
         } else {
             document.getElementById('directEntryBox').classList.remove('hidden');
+            document.getElementById('validatedHeader').classList.add('hidden');
         }
         
         render();
@@ -166,65 +178,83 @@
     }
 
     function toggleFramework(id) {
-        window.appState.selectedFrameworks = [id]; // Force single selection
+        window.appState.selectedFrameworks = [id]; 
         render();
         document.getElementById('generateBtn').classList.remove('hidden');
     }
 
-async function runAgentTwo() {
-    // Sync manual input if the validated header is hidden
-    if (!document.getElementById('directEntryBox').classList.contains('hidden')) {
-        window.appState.cleanProblem = document.getElementById('manualProblemInput').value;
-    }
-
-    if (!window.appState.cleanProblem || window.appState.cleanProblem.length < 10) {
-        alert("Please enter a structured problem description first.");
-        return;
-    }
-
-    const selectedId = window.appState.selectedFrameworks[0] || 'auto-select';
-    const btn = document.getElementById('generateBtn');
-    
-    btn.innerText = "Architecting Solution...";
-    btn.disabled = true;
-
-    try {
-        const response = await fetch('/app', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // MATCHING YOUR BACKEND SIGNATURE:
-            body: JSON.stringify({ 
-                problem: window.appState.cleanProblem,
-                framework_id: selectedId
-            })
-        });
-        
-        const data = await response.json();
-        
-        if(data.success) {
-            const resDiv = document.getElementById('result-content');
-            resDiv.classList.remove('hidden');
-            resDiv.innerHTML = `<div class="whitespace-pre-wrap font-body text-gray-800">${data.analysisData}</div>`; 
-            
-            // Hide selection UI
-            document.getElementById('step-content').classList.add('hidden');
-            document.getElementById('validatedHeader').classList.add('hidden');
-            document.getElementById('directEntryBox').classList.add('hidden');
-            btn.classList.add('hidden');
-        } else {
-            alert("Error: " + (data.error || "Unknown error occurred"));
+    async function runAgentTwo() {
+        if (!document.getElementById('directEntryBox').classList.contains('hidden')) {
+            window.appState.cleanProblem = document.getElementById('manualProblemInput').value;
         }
-    } catch (error) {
-        alert("Connection error: Could not reach DAID server.");
-    } finally {
-        btn.innerText = "Generate Solution";
-        btn.disabled = false;
+
+        if (!window.appState.cleanProblem || window.appState.cleanProblem.length < 10) {
+            alert("Please enter a structured problem description first.");
+            return;
+        }
+
+        const selectedId = window.appState.selectedFrameworks[0] || 'auto-select';
+        const btn = document.getElementById('generateBtn');
+        
+        btn.innerText = "Architecting Solution...";
+        btn.disabled = true;
+
+        try {
+            const response = await fetch('/app', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    problem: window.appState.cleanProblem,
+                    framework_id: selectedId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if(data.success) {
+                const resDiv = document.getElementById('result-content');
+                const renderArea = document.getElementById('analysis-render-area');
+                
+                resDiv.classList.remove('hidden');
+                renderArea.innerHTML = data.analysisData; 
+                
+                // Hide selection UI completely
+                document.getElementById('step-content').classList.add('hidden');
+                document.getElementById('nav-container').classList.add('hidden');
+                document.getElementById('input-section').classList.add('hidden'); // Hide problem input to focus on output
+            } else {
+                alert("Error: " + (data.error || "Unknown error occurred"));
+            }
+        } catch (error) {
+            alert("Connection error: Could not reach DAID server.");
+        } finally {
+            btn.innerText = "Generate Solution";
+            btn.disabled = false;
+        }
     }
-}
+
+    function goBackToSelection() {
+        // Hide Results
+        document.getElementById('result-content').classList.add('hidden');
+        
+        // Show Selection Grid and Nav
+        document.getElementById('step-content').classList.remove('hidden');
+        document.getElementById('nav-container').classList.remove('hidden');
+        document.getElementById('input-section').classList.remove('hidden');
+        
+        // Smooth scroll back to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     function clearProblem() {
         localStorage.removeItem('daid_clean_problem');
-        location.reload();
+        window.appState.cleanProblem = '';
+        document.getElementById('manualProblemInput').value = '';
+        document.getElementById('validatedHeader').classList.add('hidden');
+        document.getElementById('directEntryBox').classList.remove('hidden');
+        window.appState.selectedFrameworks = [];
+        document.getElementById('generateBtn').classList.add('hidden');
+        render();
     }
 </script>
 {% endblock %}
