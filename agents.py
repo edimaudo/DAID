@@ -7,7 +7,7 @@ AIRIA_USER_ID = os.getenv("AIRIA_USER_ID")
 AIRIA_KEY = os.getenv("AIRIA_API_KEY")
 AIRIA_AGENT_URL_FRAMER = os.getenv("AIRIA_AGENT_URL_FRAMER")
 AIRIA_AGENT_ID_FRAMER = os.getenv("AIRIA_AGENT_ID_FRAMER")
-AIRIA_AGENT_URL_SOLUTION = os.getenv("AIRIA_AGENT_URL_SOLUTION")
+AIRIA_AGENT_URL_SOLUTION = 'https://api.airia.ai/v2/PipelineExecution/75fc2f98-59eb-4354-a706-92017afa7978'#os.getenv("AIRIA_AGENT_URL_SOLUTION")
 AIRIA_AGENT_ID_SOLUTION = os.getenv("AIRIA_AGENT_ID_SOLUTION")
 
 async def agent_framer(question: str):
