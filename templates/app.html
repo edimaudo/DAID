@@ -29,9 +29,9 @@
 
         <div id="directEntryBox" class="mb-8 bg-gray-50 border border-gray-200 rounded-2xl p-6 hidden">
             <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Enter Structured Problem</h3>
-            <textarea id="manualProblemInput" rows="3" 
+            <textarea id="manualProblemInput" rows="6" 
                       placeholder="Describe the problem you want to solve..."
-                      class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+                      class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none font-body"></textarea>
         </div>
     </div>
 
@@ -45,12 +45,12 @@
 
     <div id="result-content" class="mt-8 bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hidden prose max-w-none">
         <div class="flex justify-between items-center mb-6 border-b pb-4">
-            <h2 class="text-xl font-bold text-gray-900">Solution Design Output</h2>
+            <h2 class="text-xl font-bold text-gray-900 font-inter">Solution Architect</h2>
             <button onclick="goBackToSelection()" class="text-sm font-semibold text-blue-600 hover:text-blue-800">
                 ← Back to Frameworks
             </button>
         </div>
-        <div id="analysis-render-area" class="whitespace-pre-wrap font-body text-gray-800"></div>
+        <div id="analysis-render-area" class="whitespace-pre-wrap font-body text-gray-800 text-lg leading-relaxed"></div>
     </div>
 </div>
 
@@ -127,7 +127,7 @@
         { id: "ceo-scorecard", name: "6 Pillar CEO Scorecard", desc: "Performance measurement for leadership" },
         { id: "op-model-bridge", name: "Operating Model Bridge", desc: "Linking strategy to operating model design" },
         { id: "core-competencies", name: "Core Competencies", desc: "Unique skills providing competitive advantage" },
-        { id: "portfolio-initiatives", name: "Portfolio of Initiatives", desc: "Organizing a collection of strategic projects" },
+        { id: "portfolio-of-initiatives", name: "Portfolio of Initiatives", desc: "Organizing a collection of strategic projects" },
         { id: "eisenhower", name: "Eisenhower Matrix", desc: "Prioritize by categorization of Urgency/Importance" }
     ];
 
@@ -161,7 +161,7 @@
         div.innerHTML = `
             <div>
                 <h2 class="text-3xl font-bold font-inter text-gray-900">Select Decision Framework</h2>
-                <p class="text-gray-500">Choose a framework or let DAID decide the best approach.</p>
+                <p class="text-gray-500 font-body">Choose a specific lens or let DAID's Auto-Select engine find the optimal fit.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                 ${FRAMEWORKS.map(f => `
@@ -184,12 +184,23 @@
     }
 
     async function runAgentTwo() {
-        if (!document.getElementById('directEntryBox').classList.contains('hidden')) {
-            window.appState.cleanProblem = document.getElementById('manualProblemInput').value;
+        // --- DATA SYNC LOGIC ---
+        const manualInput = document.getElementById('manualProblemInput');
+        const manualVal = manualInput ? manualInput.value.trim() : "";
+
+        // Priority 1: Textarea (if user is typing directly)
+        if (manualVal.length > 0) {
+            window.appState.cleanProblem = manualVal;
+        } 
+        // Priority 2: localStorage (if coming from Framer)
+        else {
+            const stored = localStorage.getItem('daid_clean_problem');
+            if (stored) window.appState.cleanProblem = stored;
         }
 
+        // Final Validation
         if (!window.appState.cleanProblem || window.appState.cleanProblem.length < 10) {
-            alert("Please enter a structured problem description first.");
+            alert("Please ensure your problem statement is provided before generating a solution.");
             return;
         }
 
@@ -221,12 +232,12 @@
                 // Hide selection UI completely
                 document.getElementById('step-content').classList.add('hidden');
                 document.getElementById('nav-container').classList.add('hidden');
-                document.getElementById('input-section').classList.add('hidden'); // Hide problem input to focus on output
+                document.getElementById('input-section').classList.add('hidden');
             } else {
-                alert("Error: " + (data.error || "Unknown error occurred"));
+                alert("Logic Error: " + (data.error || "Unknown error"));
             }
         } catch (error) {
-            alert("Connection error: Could not reach DAID server.");
+            alert("Network Error: Connection to DAID failed.");
         } finally {
             btn.innerText = "Generate Solution";
             btn.disabled = false;
@@ -234,15 +245,10 @@
     }
 
     function goBackToSelection() {
-        // Hide Results
         document.getElementById('result-content').classList.add('hidden');
-        
-        // Show Selection Grid and Nav
         document.getElementById('step-content').classList.remove('hidden');
         document.getElementById('nav-container').classList.remove('hidden');
         document.getElementById('input-section').classList.remove('hidden');
-        
-        // Smooth scroll back to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
