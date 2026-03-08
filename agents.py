@@ -33,7 +33,7 @@ async def agent_framer(question: str):
         try:
             # 3. Execution call
             response = await client.post(
-                AIRIA_API_URL_FRAMER, json=payload, headers=headers, timeout=60.0
+                AIRIA_AGENT_URL_FRAMER, json=payload, headers=headers, timeout=60.0
             )
 
             response.raise_for_status()
