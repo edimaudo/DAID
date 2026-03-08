@@ -17,7 +17,8 @@ async def index(request: Request):
 async def framer_page(request: Request):
     return templates.TemplateResponse("framer.html", {"request": request})
 
-@app.post("/api/frame_problem")
+#@app.post("/api/frame_problem")
+@app.post("/framer")
 async def frame_problem(request: Request):
     data = await request.json()
     messy_input = data.get('messyInput', '')
@@ -32,7 +33,8 @@ async def frame_problem(request: Request):
 async def main_app(request: Request):
     return templates.TemplateResponse("app.html", {"request": request})
 
-@app.post("/api/generate_analysis")
+@app.post("/app")
+#@app.post("/api/generate_analysis")
 async def generate_analysis(request: Request):
     data = await request.json()
     clean_problem = data.get('cleanProblem', '')
