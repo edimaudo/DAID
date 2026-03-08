@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from agents import agent_framer #,
+from agents import agent_framer ,agent_solution_designer
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -18,7 +18,6 @@ async def index(request: Request):
 async def framer_page(request: Request):
     return templates.TemplateResponse("framer.html", {"request": request})
 
-#@app.post("/api/frame_problem")
 @app.post("/framer")
 async def frame_problem(request: Request):
     data = await request.json()
@@ -35,7 +34,6 @@ async def main_app(request: Request):
     return templates.TemplateResponse("app.html", {"request": request})
 
 @app.post("/app")
-#@app.post("/api/generate_analysis")
 async def generate_analysis(request: Request):
     data = await request.json()
     clean_problem = data.get('cleanProblem', '')
