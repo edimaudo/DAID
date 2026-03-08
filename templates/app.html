@@ -171,55 +171,56 @@
         document.getElementById('generateBtn').classList.remove('hidden');
     }
 
-    async function runAgentTwo() {
-        if (!window.appState.cleanProblem) {
-            const manualInput = document.getElementById('manualProblemInput').value;
-            if (!manualInput || manualInput.length < 10) {
-                alert("Please enter a structured problem description first.");
-                return;
-            }
-            window.appState.cleanProblem = manualInput;
-        }
-
-        const selectedId = window.appState.selectedFrameworks[0];
-        const btn = document.getElementById('generateBtn');
-        btn.innerText = "Processing...";
-        btn.disabled = true;
-
-        let instruction = "";
-        if (selectedId === "auto-select") {
-            instruction = "Analyze the following problem, select the most appropriate strategic framework to solve it, explain why you chose it, and then provide the solution.";
-        } else {
-            const fName = FRAMEWORKS.find(f => f.id === selectedId).name;
-            instruction = `Apply the ${fName} framework to solve the following problem:`;
-        }
-
-        try {
-            const response = await fetch('/app', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    userQuery: `${instruction}\n\nProblem: ${window.appState.cleanProblem}`
-                })
-            });
-            const data = await response.json();
-            
-            if(data.success) {
-                const resDiv = document.getElementById('result-content');
-                resDiv.classList.remove('hidden');
-                resDiv.innerHTML = `<div class="prose max-w-none">${data.analysisData.replace(/\n/g, '<br>')}</div>`; 
-                document.getElementById('step-content').classList.add('hidden');
-                document.getElementById('validatedHeader').classList.add('hidden');
-                document.getElementById('directEntryBox').classList.add('hidden');
-                btn.classList.add('hidden');
-            }
-        } catch (error) {
-            alert("Connection error.");
-        } finally {
-            btn.innerText = "Generate Solution";
-            btn.disabled = false;
-        }
+async function runAgentTwo() {
+    // Sync manual input if the validated header is hidden
+    if (!document.getElementById('directEntryBox').classList.contains('hidden')) {
+        window.appState.cleanProblem = document.getElementById('manualProblemInput').value;
     }
+
+    if (!window.appState.cleanProblem || window.appState.cleanProblem.length < 10) {
+        alert("Please enter a structured problem description first.");
+        return;
+    }
+
+    const selectedId = window.appState.selectedFrameworks[0] || 'auto-select';
+    const btn = document.getElementById('generateBtn');
+    
+    btn.innerText = "Architecting Solution...";
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/app', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // MATCHING YOUR BACKEND SIGNATURE:
+            body: JSON.stringify({ 
+                problem: window.appState.cleanProblem,
+                framework_id: selectedId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if(data.success) {
+            const resDiv = document.getElementById('result-content');
+            resDiv.classList.remove('hidden');
+            resDiv.innerHTML = `<div class="whitespace-pre-wrap font-body text-gray-800">${data.analysisData}</div>`; 
+            
+            // Hide selection UI
+            document.getElementById('step-content').classList.add('hidden');
+            document.getElementById('validatedHeader').classList.add('hidden');
+            document.getElementById('directEntryBox').classList.add('hidden');
+            btn.classList.add('hidden');
+        } else {
+            alert("Error: " + (data.error || "Unknown error occurred"));
+        }
+    } catch (error) {
+        alert("Connection error: Could not reach DAID server.");
+    } finally {
+        btn.innerText = "Generate Solution";
+        btn.disabled = false;
+    }
+}
 
     function clearProblem() {
         localStorage.removeItem('daid_clean_problem');
