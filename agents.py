@@ -59,7 +59,7 @@ async def agent_framer(question: str):
 
                 answer = (
                     f"### Problem Statement\n{problem}\n\n"
-                    f"### Revised Problem Statemnt\n{reframed_problem}\n\n"
+                    f"### Revised Problem Statement\n{reframed_problem}\n\n"
                     f"### Reasoning\n{reasoning}\n\n"
                 )
 
