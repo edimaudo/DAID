@@ -1,7 +1,7 @@
 # DAID
 
 ## Overview
-DAID is built to help users move from messy thoughts to smarter decisions.
+DAID is a decision intelligence tool that help users move from messy thoughts to smarter decisions.
 
 
 ## Project Structure
